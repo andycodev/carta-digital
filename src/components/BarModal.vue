@@ -152,30 +152,31 @@ defineExpose({
 
         <!-- Scrollable Content Wrapper -->
         <div class="overflow-y-auto no-scrollbar flex-1">
-          <!-- Video Player Showcase (Hero Inmersivo) -->
+          <!-- Video Player Showcase (Hero Completo sin zoom forzado) -->
           <div ref="videoContainerRef"
-            class="relative w-full aspect-video sm:aspect-[16/9] bg-black overflow-hidden flex items-center justify-center group border-b border-slate-200/80">
-            <!-- Video local con cover elegante -->
+            class="relative w-full bg-slate-950 overflow-hidden flex items-center justify-center group border-b border-slate-200/80 min-h-[220px] max-h-[50vh]">
+            <!-- Fondo difuminado ambiental en tiempo real (evita barras negras duras) -->
+            <video src="/videos/bar-promo.mp4" autoplay loop muted playsinline aria-hidden="true"
+              class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-35 scale-110 pointer-events-none">
+            </video>
+
+            <!-- Video principal sin recorte ni zoom artificial (100% completo) -->
             <video ref="videoRef" src="/videos/bar-promo.mp4" autoplay loop muted playsinline preload="auto"
-              class="w-full h-full object-cover">
+              class="relative z-10 w-full h-auto max-h-[48vh] object-contain mx-auto">
               Tu navegador no soporta el elemento de video.
             </video>
 
-            <!-- Gradient overlays para integración elegante -->
-            <div
-              class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 pointer-events-none">
-            </div>
+            <!-- Gradient overlays sutiles en los extremos -->
+            <div class="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/70 to-transparent pointer-events-none z-15"></div>
+            <div class="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/50 to-transparent pointer-events-none z-15"></div>
 
             <!-- Video badge & Live indicator -->
-            <div class="absolute bottom-3 left-4 flex items-center gap-2 z-10 pointer-events-none">
+            <div class="absolute bottom-3 left-4 flex items-center gap-2 z-20 pointer-events-none">
               <span
                 class="bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-md">
                 <span class="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping"></span>
                 <span>Ambiente en vivo</span>
               </span>
-              <!-- <span class="text-[11px] text-amber-200 font-bold drop-shadow-md hidden sm:inline">
-                Bar - Las Delicias
-              </span> -->
             </div>
 
             <!-- Botón toggle audio del video -->
