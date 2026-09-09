@@ -1,54 +1,65 @@
 <!doctype html>
 <html lang="es" data-theme="delicias">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#1a1a2e" />
 
-    <!-- ═══════════════════════════════════════════════════════
+<head>
+     <meta charset="UTF-8" />
+     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+     <meta name="theme-color" content="#1a1a2e" />
+
+     <!-- ═══════════════════════════════════════════════════════
          SEO BÁSICO
     ════════════════════════════════════════════════════════════ -->
-    <title>Las Delicias Restobar | Carta Digital</title>
-    <meta name="description" content="🍽️ Las Delicias y La Eskinita se unieron para ofrecerte lo mejor de nuestra comida en un solo lugar. 😋🍔🔥" />
-    <meta name="keywords" content="Las Delicias Restobar, carta digital, menú online, restaurante Chongoyape, La Eskinita, almuerzo, cena, coctelería, bar" />
-    <meta name="author" content="Las Delicias Restobar" />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://carta.lasdeliciasrestobar.com/" />
+     <title>Las Delicias Restobar | Carta Digital</title>
+     <meta name="description"
+          content="🍽️ Las Delicias y La Eskinita se unieron para ofrecerte lo mejor de nuestra comida en un solo lugar. 😋🍔🔥" />
+     <meta name="keywords"
+          content="Las Delicias Restobar, carta digital, menú online, restaurante Chongoyape, La Eskinita, almuerzo, cena, coctelería, bar" />
+     <meta name="author" content="Las Delicias Restobar" />
+     <meta name="robots" content="index, follow" />
+     <link rel="canonical" href="https://lasdelicias.onrender.com/" />
 
-    <!-- ═══════════════════════════════════════════════════════
+     <!-- ═══════════════════════════════════════════════════════
          OPEN GRAPH – Facebook, WhatsApp, Messenger, Telegram
     ════════════════════════════════════════════════════════════ -->
-    <meta property="og:type"        content="website" />
-    <meta property="og:site_name"   content="Las Delicias Restobar" />
-    <meta property="og:locale"      content="es_PE" />
-    <meta property="og:title"       content="Las Delicias Restobar | Carta Digital" />
-    <meta property="og:description" content="🍽️ Las Delicias y La Eskinita se unieron para ofrecerte lo mejor de nuestra comida en un solo lugar. 😋🍔🔥" />
-    <meta property="og:image"       content="https://i.postimg.cc/V6LMwntr/las-delicias-logo.png" />
-    <meta property="og:image:alt"   content="Las Delicias Restobar - Carta Digital" />
-    <meta property="og:image:width"  content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:url"         content="https://carta.lasdeliciasrestobar.com/" />
+     <meta property="og:type" content="website" />
+     <meta property="og:site_name" content="Las Delicias Restobar" />
+     <meta property="og:locale" content="es_PE" />
+     <meta property="og:url" content="https://lasdelicias.onrender.com/" />
+     <meta property="og:title" content="Las Delicias Restobar | Carta Digital" />
+     <meta property="og:description"
+          content="🍽️ Las Delicias y La Eskinita se unieron para ofrecerte lo mejor de nuestra comida en un solo lugar. 😋🍔🔥" />
 
-    <!-- ═══════════════════════════════════════════════════════
+     <!-- Imagen servida directamente desde public/logo.png -->
+     <meta property="og:image" content="https://lasdelicias.onrender.com/logo.png" />
+     <meta property="og:image:secure_url" content="https://lasdelicias.onrender.com/logo.png" />
+     <meta property="og:image:type" content="image/png" />
+     <meta property="og:image:width" content="1200" />
+     <meta property="og:image:height" content="630" />
+     <meta property="og:image:alt" content="Las Delicias Restobar - Carta Digital" />
+
+     <!-- ═══════════════════════════════════════════════════════
          TWITTER / X CARDS
     ════════════════════════════════════════════════════════════ -->
-    <meta name="twitter:card"        content="summary_large_image" />
-    <meta name="twitter:title"       content="Las Delicias Restobar | Carta Digital" />
-    <meta name="twitter:description" content="🍽️ Las Delicias y La Eskinita se unieron para ofrecerte lo mejor de nuestra comida en un solo lugar. 😋🍔🔥" />
-    <meta name="twitter:image"       content="https://i.postimg.cc/V6LMwntr/las-delicias-logo.png" />
-    <meta name="twitter:image:alt"   content="Las Delicias Restobar - Carta Digital" />
+     <meta name="twitter:card" content="summary_large_image" />
+     <meta name="twitter:title" content="Las Delicias Restobar | Carta Digital" />
+     <meta name="twitter:description"
+          content="🍽️ Las Delicias y La Eskinita se unieron para ofrecerte lo mejor de nuestra comida en un solo lugar. 😋🍔🔥" />
+     <meta name="twitter:image" content="https://lasdelicias.onrender.com/logo.png" />
+     <meta name="twitter:image:alt" content="Las Delicias Restobar - Carta Digital" />
 
-    <!-- ═══════════════════════════════════════════════════════
+     <!-- ═══════════════════════════════════════════════════════
          FONTS
     ════════════════════════════════════════════════════════════ -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Playfair+Display:ital,wght@0,500..800;1,500..800&display=swap" rel="stylesheet">
-  </head>
-  <body class="bg-brand-bg text-brand-body min-h-screen antialiased selection:bg-brand-primary selection:text-white">
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
-</html>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Playfair+Display:ital,wght@0,500..800;1,500..800&display=swap"
+          rel="stylesheet">
+</head>
 
+<body class="bg-brand-bg text-brand-body min-h-screen antialiased selection:bg-brand-primary selection:text-white">
+     <div id="app"></div>
+     <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>
