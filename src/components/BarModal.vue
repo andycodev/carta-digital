@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { SparklesIcon, XMarkIcon, ArrowRightIcon } from '@heroicons/vue/24/outline'
+import { SparklesIcon, XMarkIcon, ArrowRightIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
   barCategoryId?: string
@@ -12,6 +12,29 @@ const emit = defineEmits<{
 
 const modalRef = ref<HTMLDialogElement | null>(null)
 const videoRef = ref<HTMLVideoElement | null>(null)
+const videoContainerRef = ref<HTMLDivElement | null>(null)
+const isFullscreen = ref(false)
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    videoContainerRef.value?.requestFullscreen().then(() => {
+      isFullscreen.value = true
+    }).catch(err => {
+      console.log('Error al entrar en pantalla completa:', err)
+    })
+  } else {
+    document.exitFullscreen().then(() => {
+      isFullscreen.value = false
+    }).catch(err => {
+      console.log('Error al salir de pantalla completa:', err)
+    })
+  }
+}
+
+// Escuchar cambios de pantalla completa
+document.addEventListener('fullscreenchange', () => {
+  isFullscreen.value = !!document.fullscreenElement
+})
 
 function openModal() {
   if (modalRef.value) {
@@ -68,18 +91,27 @@ defineExpose({
     <!-- Native DaisyUI Modal Dialog -->
     <dialog id="modal_bar" ref="modalRef" class="modal modal-bottom sm:modal-middle bg-slate-950/60 backdrop-blur-sm">
       <div
-        class="modal-box bg-white border border-slate-200 p-0 max-w-lg overflow-hidden shadow-2xl rounded-3xl text-slate-800">
+        class="modal-box bg-white border border-slate-200 p-0 max-w-2xl overflow-hidden shadow-2xl rounded-3xl text-slate-800 sm:rounded-3xl rounded-none h-screen sm:h-auto max-h-screen">
         <!-- Close button on top-right -->
         <button type="button" @click="closeModal"
           class="btn btn-sm btn-circle btn-ghost absolute right-3.5 top-3.5 z-20 text-white bg-slate-900/60 hover:bg-slate-900/80 border-none shadow-sm cursor-pointer">
           <XMarkIcon class="w-5 h-5" />
         </button>
 
+        <!-- Fullscreen toggle button -->
+        <button type="button" @click="toggleFullscreen"
+          class="btn btn-sm btn-circle btn-ghost absolute left-3.5 top-3.5 z-20 text-white bg-slate-900/60 hover:bg-slate-900/80 border-none shadow-sm cursor-pointer"
+          :title="isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'">
+          <ArrowsPointingInIcon v-if="isFullscreen" class="w-5 h-5" />
+          <ArrowsPointingOutIcon v-else class="w-5 h-5" />
+        </button>
+
         <!-- Video Player Showcase -->
-        <div class="relative w-full aspect-video bg-black overflow-hidden flex items-center justify-center">
+        <div ref="videoContainerRef"
+          class="relative w-full aspect-[4/3] sm:aspect-video bg-black overflow-hidden flex items-center justify-center">
           <!-- Video local -->
           <video ref="videoRef" src="/videos/bar-promo.mp4" autoplay loop playsinline preload="auto"
-            class="w-full h-full object-cover">
+            class="w-full h-full object-contain bg-black">
             Tu navegador no soporta el elemento de video.
           </video>
 

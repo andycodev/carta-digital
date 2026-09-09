@@ -13,8 +13,7 @@ import {
   ArrowLeftIcon,
   BuildingStorefrontIcon,
   SpeakerWaveIcon,
-  SpeakerXMarkIcon,
-  SparklesIcon
+  SpeakerXMarkIcon
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
@@ -199,33 +198,6 @@ function closeProductImage() {
 
     <!-- Main Content compacto -->
     <main class="flex-1 max-w-3xl w-full mx-auto px-3.5 sm:px-4 pb-20 pt-1">
-
-      <!-- Hero del Bar sin video -->
-      <div class="mb-4 p-4 rounded-2xl border-2 border-amber-500/40 shadow-lg"
-        style="background: linear-gradient(135deg, #2d1b00 0%, #1a0a2e 50%, #0f0f1a 100%)">
-        <div class="flex items-center gap-3">
-          <div
-            class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-2xl">
-            🍸
-          </div>
-          <div class="flex-1">
-            <div class="flex items-center gap-2 mb-1">
-              <SparklesIcon class="w-5 h-5 text-amber-400" />
-              <span
-                class="text-xs font-bold text-amber-400 uppercase tracking-wider bg-amber-500/20 px-2 py-1 rounded-full">
-                Bar & Coctelería
-              </span>
-            </div>
-            <h2 class="text-2xl font-black text-white mb-1" style="text-shadow: 0 0 30px rgba(251,191,36,0.4)">
-              Mixología de Autor
-            </h2>
-            <p class="text-sm text-slate-300">
-              Cocteles artesanales, destilados premium y ambiente exclusivo
-            </p>
-          </div>
-        </div>
-      </div>
-
 
       <!-- Header de sección compacto -->
       <div class="my-2.5 flex items-center justify-between border-b border-white/10 pb-2">
