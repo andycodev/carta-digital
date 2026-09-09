@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useMenuStore } from '@/composables/useMenuStore'
 import { useVisitorTracker } from '@/composables/useVisitorTracker'
+import { usePageMeta } from '@/composables/usePageMeta'
 import HeaderMenu from '@/components/HeaderMenu.vue'
 import ProductCard from '@/components/ProductCard.vue'
 import ProductImageModal from '@/components/ProductImageModal.vue'
@@ -22,6 +23,12 @@ const { trackVisit } = useVisitorTracker()
 
 onMounted(() => {
   trackVisit('bar', route.query)
+
+  usePageMeta({
+    title: 'Bar & Coctelería | Las Delicias Restobar',
+    description: '\uD83C\uDF79 Descubre nuestra carta de tragos, cocteles y bebidas artesanales. Ambiente, m\u00fasica y los mejores sabores de Las Delicias Restobar.',
+    url: 'https://carta.lasdeliciasrestobar.com/bar'
+  })
 })
 
 const searchQuery = ref('')

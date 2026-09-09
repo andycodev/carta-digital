@@ -2,10 +2,12 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
+import { routeMetaPlugin } from './vite-plugin-route-meta.ts'
 
 export default defineConfig({
   plugins: [
     vue(),
+    routeMetaPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {

@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useMenuStore } from '@/composables/useMenuStore'
 import { useMenuSchedule } from '@/composables/useMenuSchedule'
 import { useVisitorTracker } from '@/composables/useVisitorTracker'
+import { usePageMeta } from '@/composables/usePageMeta'
 import HeaderMenu from '@/components/HeaderMenu.vue'
 import CategoryTabs from '@/components/CategoryTabs.vue'
 import ProductCard from '@/components/ProductCard.vue'
@@ -32,6 +33,12 @@ const lastRealtimeEvent = ref<string | null>(null)
 
 onMounted(() => {
   trackVisit('main', route.query)
+
+  usePageMeta({
+    title: 'Las Delicias Restobar | Carta Digital',
+    description: '\uD83C\uDF7D\uFE0F Las Delicias y La Eskinita se unieron para ofrecerte lo mejor de nuestra comida en un solo lugar. \uD83D\uDE0B\uD83C\uDF54\uD83D\uDD25',
+    url: 'https://carta.lasdeliciasrestobar.com/'
+  })
 })
 
 const {
