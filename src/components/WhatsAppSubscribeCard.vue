@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useMenuStore } from '@/composables/useMenuStore'
 import {
   ChatBubbleLeftRightIcon,
@@ -16,30 +16,42 @@ withDefaults(defineProps<{
 const { config } = useMenuStore()
 const errorMessage = ref<string | null>(null)
 
-// Validación estricta del enlace dinámico configurado por el administrador
-const isValidGroupUrl = computed(() => {
-  const url = (config.value.whatsapp_group_url || '').trim()
-  if (!url) return false
-  // Prohibir enlaces de ejemplo o texto simulado
-  if (url.includes('EXAMPLE') || url.includes('FLX38a7Z4lC4b6EXAMPLE')) return false
-  return url.startsWith('http://') || url.startsWith('https://')
-})
+// Obtener el enlace efectivo del grupo de WhatsApp
+function resolveWhatsAppTarget(): string | null {
+  const groupUrl = (config.value.whatsapp_group_url || '').trim()
+  if (groupUrl && groupUrl.startsWith('http') && !groupUrl.includes('EXAMPLE')) {
+    return groupUrl
+  }
+
+  // Si aún no hay enlace de grupo configurado pero sí teléfono de contacto, enlazar directamente por WhatsApp
+  const phone = (config.value.telefono_whatsapp || '').replace(/\D/g, '')
+  if (phone) {
+    const intlPhone = phone.startsWith('51') ? phone : `51${phone}`
+    return `https://wa.me/${intlPhone}?text=${encodeURIComponent('¡Hola! Deseo unirme al grupo oficial de WhatsApp de Las Delicias Restobar.')}`
+  }
+
+  return null
+}
 
 function handleJoinGroup() {
   errorMessage.value = null
-  const url = (config.value.whatsapp_group_url || '').trim()
+  const targetUrl = resolveWhatsAppTarget()
 
-  if (!isValidGroupUrl.value || !url) {
+  if (!targetUrl) {
     errorMessage.value = 'El grupo de WhatsApp no está disponible por el momento.'
     return
   }
 
-  try {
-    // Abrir directamente el enlace oficial del grupo configurado
-    window.open(url, '_blank', 'noopener,noreferrer')
-  } catch (err) {
-    console.error('Error al abrir el enlace del grupo:', err)
-    window.location.href = url
+  // En dispositivos móviles, window.location.href garantiza la apertura directa de la app WhatsApp
+  // sin ser bloqueada por los filtros de pop-ups de navegadores móviles (iOS Safari / Android Chrome)
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  if (isMobile) {
+    window.location.href = targetUrl
+  } else {
+    const newWindow = window.open(targetUrl, '_blank', 'noopener,noreferrer')
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      window.location.href = targetUrl
+    }
   }
 }
 </script>

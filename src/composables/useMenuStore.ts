@@ -230,8 +230,8 @@ const DEFAULT_CONFIG: AppConfig = {
   musica_activa: false,
   musica_url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3',
   musica_volumen: 35,
-  telefono_whatsapp: '+51 987 654 321',
-  whatsapp_group_url: '',
+  telefono_whatsapp: '945589531',
+  whatsapp_group_url: 'https://chat.whatsapp.com/GHccRb7vBQL0gMMbybfU5i?s=cl&p=a&mlu=4&ilr=4',
   whatsapp_subscription_enabled: true,
   mostrar_precios_carta: true,
   mostrar_precios_flyers: true
@@ -253,6 +253,79 @@ const products = ref<Producto[]>(loadInitial(STORAGE_KEY_PRODUCTS, DEFAULT_PRODU
 const config = ref<AppConfig>(loadInitial(STORAGE_KEY_CONFIG, DEFAULT_CONFIG))
 const whatsappSubscriptions = ref<WhatsAppSubscriber[]>(loadInitial(STORAGE_KEY_WHATSAPP_SUBS, DEFAULT_WHATSAPP_SUBS))
 
+// Auto-sync configuration with Supabase restaurant_settings table
+async function syncConfigWithSupabase() {
+  if (!isSupabaseConfigured) return
+  try {
+    const { data, error } = await supabase
+      .from('restaurant_settings')
+      .select('*')
+      .eq('id', 'default')
+      .maybeSingle()
+
+    if (error) {
+      console.warn('Supabase restaurant_settings fetch note:', error.message)
+      return
+    }
+
+    if (data) {
+      config.value = {
+        ...config.value,
+        nombre_negocio: data.nombre_negocio || config.value.nombre_negocio,
+        subtitulo: data.subtitulo || config.value.subtitulo,
+        telefono_whatsapp: data.telefono_whatsapp || config.value.telefono_whatsapp,
+        whatsapp_group_url: data.whatsapp_group_url || config.value.whatsapp_group_url,
+        whatsapp_subscription_enabled: data.whatsapp_subscription_enabled ?? config.value.whatsapp_subscription_enabled,
+        mostrar_precios_carta: data.mostrar_precios_carta ?? config.value.mostrar_precios_carta,
+        mostrar_precios_flyers: data.mostrar_precios_flyers ?? config.value.mostrar_precios_flyers,
+        musica_activa: data.musica_activa ?? config.value.musica_activa,
+        musica_url: data.musica_url || config.value.musica_url,
+        musica_volumen: data.musica_volumen ?? config.value.musica_volumen
+      }
+      persist(STORAGE_KEY_CONFIG, config.value)
+    }
+  } catch (e) {
+    console.warn('Supabase config sync exception:', e)
+  }
+}
+
+// Initial sync
+syncConfigWithSupabase()
+
+// Realtime listener for restaurant_settings
+if (isSupabaseConfigured) {
+  try {
+    supabase
+      .channel('public:restaurant_settings_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'restaurant_settings' },
+        (payload) => {
+          const r = payload.new as any
+          if (r) {
+            config.value = {
+              ...config.value,
+              nombre_negocio: r.nombre_negocio || config.value.nombre_negocio,
+              subtitulo: r.subtitulo || config.value.subtitulo,
+              telefono_whatsapp: r.telefono_whatsapp || config.value.telefono_whatsapp,
+              whatsapp_group_url: r.whatsapp_group_url || config.value.whatsapp_group_url,
+              whatsapp_subscription_enabled: r.whatsapp_subscription_enabled ?? config.value.whatsapp_subscription_enabled,
+              mostrar_precios_carta: r.mostrar_precios_carta ?? config.value.mostrar_precios_carta,
+              mostrar_precios_flyers: r.mostrar_precios_flyers ?? config.value.mostrar_precios_flyers,
+              musica_activa: r.musica_activa ?? config.value.musica_activa,
+              musica_url: r.musica_url || config.value.musica_url,
+              musica_volumen: r.musica_volumen ?? config.value.musica_volumen
+            }
+            persist(STORAGE_KEY_CONFIG, config.value)
+          }
+        }
+      )
+      .subscribe()
+  } catch (e) {
+    console.warn('Realtime settings subscription error:', e)
+  }
+}
+
 // Automatically update old slogan or clear example group links in local cache
 let configChanged = false
 if (config.value.subtitulo === 'Gastronomía & Coctelería de Autor') {
@@ -260,19 +333,15 @@ if (config.value.subtitulo === 'Gastronomía & Coctelería de Autor') {
   configChanged = true
 }
 if (config.value.whatsapp_group_url && config.value.whatsapp_group_url.includes('EXAMPLE')) {
-  config.value.whatsapp_group_url = ''
+  config.value.whatsapp_group_url = 'https://chat.whatsapp.com/GHccRb7vBQL0gMMbybfU5i?s=cl&p=a&mlu=4&ilr=4'
   configChanged = true
 }
-if (config.value.whatsapp_subscription_enabled === undefined) {
-  config.value.whatsapp_subscription_enabled = true
+if (!config.value.whatsapp_group_url) {
+  config.value.whatsapp_group_url = 'https://chat.whatsapp.com/GHccRb7vBQL0gMMbybfU5i?s=cl&p=a&mlu=4&ilr=4'
   configChanged = true
 }
-if (config.value.mostrar_precios_carta === undefined) {
-  config.value.mostrar_precios_carta = true
-  configChanged = true
-}
-if (config.value.mostrar_precios_flyers === undefined) {
-  config.value.mostrar_precios_flyers = true
+if (config.value.telefono_whatsapp !== '945589531' && config.value.telefono_whatsapp === '+51 987 654 321') {
+  config.value.telefono_whatsapp = '945589531'
   configChanged = true
 }
 if (configChanged) {
@@ -376,6 +445,28 @@ export function useMenuStore() {
   function updateConfig(updates: Partial<AppConfig>) {
     config.value = { ...config.value, ...updates }
     persist(STORAGE_KEY_CONFIG, config.value)
+
+    if (isSupabaseConfigured) {
+      supabase
+        .from('restaurant_settings')
+        .upsert({
+          id: 'default',
+          nombre_negocio: config.value.nombre_negocio,
+          subtitulo: config.value.subtitulo,
+          telefono_whatsapp: config.value.telefono_whatsapp,
+          whatsapp_group_url: config.value.whatsapp_group_url,
+          whatsapp_subscription_enabled: config.value.whatsapp_subscription_enabled,
+          mostrar_precios_carta: config.value.mostrar_precios_carta,
+          mostrar_precios_flyers: config.value.mostrar_precios_flyers,
+          musica_activa: config.value.musica_activa,
+          musica_url: config.value.musica_url,
+          musica_volumen: config.value.musica_volumen,
+          updated_at: new Date().toISOString()
+        })
+        .then(({ error }) => {
+          if (error) console.error('Error saving restaurant_settings to Supabase:', error)
+        })
+    }
   }
 
   // Restore factory defaults
