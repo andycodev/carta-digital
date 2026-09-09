@@ -46,7 +46,9 @@ function handleSave() {
     whatsapp_group_url: config.value.whatsapp_group_url,
     whatsapp_subscription_enabled: config.value.whatsapp_subscription_enabled,
     mostrar_precios_carta: config.value.mostrar_precios_carta,
-    mostrar_precios_flyers: config.value.mostrar_precios_flyers
+    mostrar_precios_flyers: config.value.mostrar_precios_flyers,
+    bar_video_url: config.value.bar_video_url,
+    bar_music_url: config.value.bar_music_url
   })
 
   savedNotice.value = 'Configuración guardada correctamente.'
@@ -347,6 +349,62 @@ function handleFactoryReset() {
               </label>
             </div>
           </div>
+        </div>
+
+        <!-- Section 5: Configuración de la Carta del Bar -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
+          <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
+            <div class="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600">
+              <MusicalNoteIcon class="w-4 h-4" />
+            </div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm">Carta del Bar & Coctelería</h3>
+              <p class="text-[10px] text-slate-500">Video promocional y música ambiental exclusiva</p>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block font-semibold text-slate-700 text-xs mb-1">
+                URL del Video Promocional (YouTube o local)
+              </label>
+              <input
+                v-model="config.bar_video_url"
+                type="url"
+                placeholder="https://www.youtube.com/watch?v=... o /video/bar-promo.mp4"
+                @change="handleSave"
+                class="input input-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary font-mono"
+              />
+              <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                <strong>Opción 1 (YouTube):</strong> Pega un enlace de YouTube (ej: https://www.youtube.com/watch?v=xyz). Se mostrará en el modal "Zona del Bar".<br>
+                <strong>Opción 2 (Local):</strong> Sube el video a <code>/public/videos/</code> y usa la ruta relativa (ej: <code>/videos/bar-promo.mp4</code>).
+              </p>
+            </div>
+
+            <div>
+              <label class="block font-semibold text-slate-700 text-xs mb-1">
+                URL de Música Ambiental del Bar (opcional)
+              </label>
+              <input
+                v-model="config.bar_music_url"
+                type="url"
+                placeholder="https://... (dejar vacío para usar música general)"
+                @change="handleSave"
+                class="input input-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary font-mono"
+              />
+              <p class="text-[10px] text-slate-400 mt-1">
+                Si se deja vacío, se usará la música ambiental general configurada arriba.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            @click="handleSave"
+            class="btn btn-sm bg-purple-600 hover:bg-purple-700 text-white border-none rounded-xl text-xs w-full"
+          >
+            Guardar Configuración del Bar
+          </button>
         </div>
 
         <!-- Danger Zone: Factory Reset -->

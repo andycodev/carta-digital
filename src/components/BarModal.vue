@@ -11,6 +11,7 @@ const emit = defineEmits<{
 }>()
 
 const modalRef = ref<HTMLDialogElement | null>(null)
+const videoRef = ref<HTMLVideoElement | null>(null)
 
 function openModal() {
   if (modalRef.value) {
@@ -19,9 +20,19 @@ function openModal() {
     const dialog = document.getElementById('modal_bar') as HTMLDialogElement
     dialog?.showModal()
   }
+  // Reiniciar video desde el inicio con audio
+  if (videoRef.value) {
+    videoRef.value.currentTime = 0
+    videoRef.value.muted = false
+    videoRef.value.play().catch(err => console.log('Autoplay con audio bloqueado:', err))
+  }
 }
 
 function closeModal() {
+  // Pausar video cuando se cierra el modal
+  if (videoRef.value) {
+    videoRef.value.pause()
+  }
   if (modalRef.value) {
     modalRef.value.close()
   } else {
@@ -47,12 +58,8 @@ defineExpose({
   <div>
     <!-- Floating Bottom Promo Bar -->
     <div class="fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-30">
-      <button
-        id="btn-open-bar-modal"
-        type="button"
-        @click="openModal"
-        class="bg-slate-900/95 hover:bg-slate-800 text-white font-semibold shadow-lg hover:shadow-xl rounded-full px-3.5 py-2 sm:px-4 sm:py-2.5 flex items-center gap-1.5 group transition-all duration-150 hover:scale-105 active:scale-95 border border-slate-700/80 backdrop-blur-xs text-xs cursor-pointer"
-      >
+      <button id="btn-open-bar-modal" type="button" @click="openModal"
+        class="bg-slate-900/95 hover:bg-slate-800 text-white font-semibold shadow-lg hover:shadow-xl rounded-full px-3.5 py-2 sm:px-4 sm:py-2.5 flex items-center gap-1.5 group transition-all duration-150 hover:scale-105 active:scale-95 border border-slate-700/80 backdrop-blur-xs text-xs cursor-pointer">
         <SparklesIcon class="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform duration-150" />
         <span class="font-medium tracking-tight">Zona Bar</span>
       </button>
@@ -60,39 +67,29 @@ defineExpose({
 
     <!-- Native DaisyUI Modal Dialog -->
     <dialog id="modal_bar" ref="modalRef" class="modal modal-bottom sm:modal-middle bg-slate-950/60 backdrop-blur-sm">
-      <div class="modal-box bg-white border border-slate-200 p-0 max-w-lg overflow-hidden shadow-2xl rounded-3xl text-slate-800">
+      <div
+        class="modal-box bg-white border border-slate-200 p-0 max-w-lg overflow-hidden shadow-2xl rounded-3xl text-slate-800">
         <!-- Close button on top-right -->
-        <button
-          type="button"
-          @click="closeModal"
-          class="btn btn-sm btn-circle btn-ghost absolute right-3.5 top-3.5 z-20 text-white bg-slate-900/60 hover:bg-slate-900/80 border-none shadow-sm cursor-pointer"
-        >
+        <button type="button" @click="closeModal"
+          class="btn btn-sm btn-circle btn-ghost absolute right-3.5 top-3.5 z-20 text-white bg-slate-900/60 hover:bg-slate-900/80 border-none shadow-sm cursor-pointer">
           <XMarkIcon class="w-5 h-5" />
         </button>
 
         <!-- Video Player Showcase -->
         <div class="relative w-full aspect-video bg-black overflow-hidden flex items-center justify-center">
-          <video
-            autoplay
-            muted
-            loop
-            playsinline
-            preload="auto"
-            poster="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80"
-            class="w-full h-full object-cover"
-          >
-            <source
-              src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
-              type="video/mp4"
-            />
+          <!-- Video local -->
+          <video ref="videoRef" src="/videos/bar-promo.mp4" autoplay loop playsinline preload="auto"
+            class="w-full h-full object-cover">
             Tu navegador no soporta el elemento de video.
           </video>
 
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none">
+          </div>
 
           <!-- Video badge -->
           <div class="absolute bottom-3 left-4 flex items-center gap-1.5">
-            <span class="badge bg-amber-500 text-white border-none text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 flex items-center gap-1">
+            <span
+              class="badge bg-amber-500 text-white border-none text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 flex items-center gap-1">
               <SparklesIcon class="w-3 h-3" />
               <span>En Vivo • Mixología</span>
             </span>
@@ -107,30 +104,24 @@ defineExpose({
           </div>
 
           <h3 class="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
-            Bar & Coctelería de Autor
+            Descubre lo que hay al fondo
           </h3>
 
           <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5">
-            Disfruta de nuestra selección de cócteles artesanales, macerados especiales, destilados premium y opciones sin alcohol. ¡Servicio continuo!
+            Disfruta de nuestra selección de cócteles artesanales, macerados especiales, destilados premium y opciones
+            sin alcohol. ¡Servicio continuo!
           </p>
 
           <!-- Modal Action buttons -->
           <div class="flex flex-col sm:flex-row items-center gap-2.5">
-            <button
-              id="btn-modal-view-bar"
-              type="button"
-              @click="goToBarCategory"
-              class="btn btn-primary w-full sm:flex-1 bg-brand-primary hover:bg-brand-primary-hover border-none text-white font-bold rounded-xl shadow-md text-xs sm:text-sm py-2.5 flex items-center justify-center gap-1.5 cursor-pointer"
-            >
+            <button id="btn-modal-view-bar" type="button" @click="goToBarCategory"
+              class="btn btn-primary w-full sm:flex-1 bg-brand-primary hover:bg-brand-primary-hover border-none text-white font-bold rounded-xl shadow-md text-xs sm:text-sm py-2.5 flex items-center justify-center gap-1.5 cursor-pointer">
               <span>Explorar Carta del Bar</span>
               <ArrowRightIcon class="w-4 h-4" />
             </button>
 
-            <button
-              type="button"
-              @click="closeModal"
-              class="btn btn-ghost w-full sm:w-auto text-slate-600 hover:text-slate-900 rounded-xl text-xs sm:text-sm cursor-pointer"
-            >
+            <button type="button" @click="closeModal"
+              class="btn btn-ghost w-full sm:w-auto text-slate-600 hover:text-slate-900 rounded-xl text-xs sm:text-sm cursor-pointer">
               Continuar viendo carta
             </button>
           </div>
@@ -144,5 +135,3 @@ defineExpose({
     </dialog>
   </div>
 </template>
-
-

@@ -22,6 +22,11 @@ const emit = defineEmits<{
   (e: 'open-bar-modal'): void
 }>()
 
+// Slot for extra actions (e.g., custom music button for Bar)
+defineSlots<{
+  'extra-actions'?: () => any
+}>()
+
 const router = useRouter()
 
 function goToAdmin() {
@@ -45,6 +50,9 @@ function goToAdmin() {
 
         <!-- Right Controls: Ambient Music & Admin Access -->
         <div class="flex items-center gap-2">
+          <!-- Slot for custom extra actions (e.g., Bar music button) -->
+          <slot name="extra-actions"></slot>
+
           <!-- Ambient Music Player -->
           <AmbientMusicPlayer />
 

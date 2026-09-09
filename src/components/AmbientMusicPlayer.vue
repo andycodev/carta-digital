@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useMenuStore } from '@/composables/useMenuStore'
 import { MusicalNoteIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline'
 
@@ -51,14 +51,73 @@ watch(() => config.value.musica_url, () => {
   }
 })
 
+// Activate audio on first user interaction if autoplay was blocked
+function handleFirstInteraction() {
+  if (audioRef.value && !isPlaying.value && config.value.musica_activa) {
+    const pref = sessionStorage.getItem(STORAGE_KEY_MUSIC_PREF)
+    if (pref !== 'false') {
+      audioRef.value!.muted = false
+      audioRef.value.play()
+        .then(() => {
+          isPlaying.value = true
+          hasError.value = false
+          sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'true')
+        })
+        .catch(() => {})
+    }
+  }
+  // Remove all event listeners
+  document.removeEventListener('click', handleFirstInteraction, { capture: true })
+  document.removeEventListener('touchstart', handleFirstInteraction, { capture: true })
+  document.removeEventListener('scroll', handleFirstInteraction, { capture: true })
+  document.removeEventListener('keydown', handleFirstInteraction, { capture: true })
+  document.removeEventListener('mousemove', handleFirstInteraction, { capture: true })
+}
+
 onMounted(() => {
   if (audioRef.value) {
     audioRef.value.volume = (config.value.musica_volumen || 35) / 100
   }
-  const pref = sessionStorage.getItem(STORAGE_KEY_MUSIC_PREF)
-  if (pref === 'true' && config.value.musica_activa) {
-    toggleMusic()
+  
+  // Intentar autoplay con muted primero, luego desmutar
+  if (config.value.musica_activa) {
+    const pref = sessionStorage.getItem(STORAGE_KEY_MUSIC_PREF)
+    // Si no hay preferencia guardada o es 'true', intentar autoplay
+    if (pref !== 'false') {
+      // Primero intentar autoplay muted (funciona en todos los navegadores)
+      audioRef.value!.muted = true
+      audioRef.value?.play()
+        .then(() => {
+          isPlaying.value = true
+          hasError.value = false
+          sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'true')
+          
+          // Intentar desmutar inmediatamente después de iniciar
+          setTimeout(() => {
+            if (audioRef.value && isPlaying.value) {
+              audioRef.value.muted = false
+            }
+          }, 100)
+        })
+        .catch(err => {
+          console.warn('Audio autoplay blocked by browser:', err)
+          // Bloqueado por navegador - activar en primera interacción con múltiples eventos
+          document.addEventListener('click', handleFirstInteraction, { capture: true, once: true })
+          document.addEventListener('touchstart', handleFirstInteraction, { capture: true, once: true })
+          document.addEventListener('scroll', handleFirstInteraction, { capture: true, once: true })
+          document.addEventListener('keydown', handleFirstInteraction, { capture: true, once: true })
+          document.addEventListener('mousemove', handleFirstInteraction, { capture: true, once: true })
+        })
+    }
   }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleFirstInteraction, { capture: true })
+  document.removeEventListener('touchstart', handleFirstInteraction, { capture: true })
+  document.removeEventListener('scroll', handleFirstInteraction, { capture: true })
+  document.removeEventListener('keydown', handleFirstInteraction, { capture: true })
+  document.removeEventListener('mousemove', handleFirstInteraction, { capture: true })
 })
 </script>
 

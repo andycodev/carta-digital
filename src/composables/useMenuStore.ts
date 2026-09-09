@@ -10,9 +10,9 @@ import type {
 
 const STORAGE_KEY_CATEGORIES = 'delicias_categories_v2'
 const STORAGE_KEY_PRODUCTS = 'delicias_products_v2'
-const STORAGE_KEY_CONFIG = 'delicias_config_v3'   // v3 → fuerza refresco limpio
+const STORAGE_KEY_CONFIG = 'delicias_config_v6'
 const STORAGE_KEY_WHATSAPP_SUBS = 'delicias_whatsapp_subs_v1'
-const STORAGE_KEY_CONFIG_TS = 'delicias_config_ts_v3'  // timestamp del último fetch
+const STORAGE_KEY_CONFIG_TS = 'delicias_config_ts_v6'  // timestamp del último fetch
 
 const DEFAULT_WHATSAPP_SUBS: WhatsAppSubscriber[] = [
   {
@@ -228,14 +228,16 @@ const DEFAULT_PRODUCTS: Producto[] = [
 const DEFAULT_CONFIG: AppConfig = {
   nombre_negocio: 'Las Delicias Restobar',
   subtitulo: 'Sabor, música y buenos momentos',
-  musica_activa: false,
+  musica_activa: true,
   musica_url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3',
   musica_volumen: 35,
   telefono_whatsapp: '945589531',
   whatsapp_group_url: 'https://chat.whatsapp.com/GHccRb7vBQL0gMMbybfU5i?s=cl&p=a&mlu=4&ilr=4',
   whatsapp_subscription_enabled: true,
   mostrar_precios_carta: true,
-  mostrar_precios_flyers: true
+  mostrar_precios_flyers: true,
+  bar_video_url: '/videos/bar-promo.mp4',
+  bar_music_url: ''
 }
 
 // Global Singletons for cross-view reactivity
@@ -266,16 +268,18 @@ const whatsappSubscriptions = ref<WhatsAppSubscriber[]>(loadInitial(STORAGE_KEY_
 /** Mapea la fila de Supabase a AppConfig, usando DB como fuente de verdad. */
 function rowToConfig(row: Record<string, unknown>, base: typeof config.value): typeof config.value {
   return {
-    nombre_negocio:               (row.nombre_negocio                as string  ?? base.nombre_negocio),
-    subtitulo:                    (row.subtitulo                     as string  ?? base.subtitulo),
-    telefono_whatsapp:            (row.telefono_whatsapp             as string  ?? base.telefono_whatsapp),
-    whatsapp_group_url:           (row.whatsapp_group_url            as string  ?? base.whatsapp_group_url),
-    whatsapp_subscription_enabled:(row.whatsapp_subscription_enabled as boolean ?? base.whatsapp_subscription_enabled),
-    mostrar_precios_carta:        (row.mostrar_precios_carta         as boolean ?? base.mostrar_precios_carta),
-    mostrar_precios_flyers:       (row.mostrar_precios_flyers        as boolean ?? base.mostrar_precios_flyers),
-    musica_activa:                (row.musica_activa                 as boolean ?? base.musica_activa),
-    musica_url:                   (row.musica_url                    as string  ?? base.musica_url),
-    musica_volumen:               (row.musica_volumen                as number  ?? base.musica_volumen),
+    nombre_negocio: (row.nombre_negocio as string ?? base.nombre_negocio),
+    subtitulo: (row.subtitulo as string ?? base.subtitulo),
+    telefono_whatsapp: (row.telefono_whatsapp as string ?? base.telefono_whatsapp),
+    whatsapp_group_url: (row.whatsapp_group_url as string ?? base.whatsapp_group_url),
+    whatsapp_subscription_enabled: (row.whatsapp_subscription_enabled as boolean ?? base.whatsapp_subscription_enabled),
+    mostrar_precios_carta: (row.mostrar_precios_carta as boolean ?? base.mostrar_precios_carta),
+    mostrar_precios_flyers: (row.mostrar_precios_flyers as boolean ?? base.mostrar_precios_flyers),
+    musica_activa: (row.musica_activa as boolean ?? base.musica_activa),
+    musica_url: (row.musica_url as string ?? base.musica_url),
+    musica_volumen: (row.musica_volumen as number ?? base.musica_volumen),
+    bar_video_url: (row.bar_video_url as string ?? base.bar_video_url),
+    bar_music_url: (row.bar_music_url as string ?? base.bar_music_url),
   }
 }
 
@@ -501,6 +505,8 @@ export function useMenuStore() {
           musica_activa: config.value.musica_activa,
           musica_url: config.value.musica_url,
           musica_volumen: config.value.musica_volumen,
+          bar_video_url: config.value.bar_video_url,
+          bar_music_url: config.value.bar_music_url,
           updated_at: new Date().toISOString()
         })
         .then(({ error }) => {

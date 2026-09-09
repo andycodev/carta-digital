@@ -285,30 +285,33 @@ function triggerOpenBarModal() {
         </div>
       </div>
 
-      <!-- Independent Bar Menu Access Banner -->
+      <!-- Independent Bar Menu Access Banner - Mejorado -->
       <router-link
         to="/bar"
-        class="my-4 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-xs flex items-center justify-between gap-3 border border-slate-700/60 hover:border-brand-primary transition-all group cursor-pointer"
+        class="my-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white shadow-lg flex items-center justify-between gap-4 border-2 border-amber-500/50 hover:shadow-amber-500/30 hover:scale-[1.02] transition-all group cursor-pointer"
       >
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0 group-hover:scale-105 transition-transform">
-            <SparklesIcon class="w-5 h-5" />
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform">
+            🍸
           </div>
           <div>
-            <div class="flex items-center gap-2">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-2 py-0.5 rounded-md border border-orange-500/20">
-                Carta Independiente
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-white bg-white/20 px-2 py-0.5 rounded-full border border-white/30">
+                Experiencia Premium
               </span>
-              <span class="text-xs text-slate-300 font-medium">Servicio Continuo 24/7</span>
+              <span class="text-xs text-amber-100 font-medium">Servicio 24/7</span>
             </div>
-            <h4 class="text-sm font-bold text-white mt-0.5">
-              Carta de Bar & Coctelería de Autor
+            <h4 class="text-base sm:text-lg font-black text-white mt-0.5" style="text-shadow: 0 2px 4px rgba(0,0,0,0.2)">
+              Carta de Bar & Coctelería
             </h4>
+            <p class="text-xs text-amber-100 mt-0.5">
+              Mixología de autor, ambiente exclusivo y música en vivo
+            </p>
           </div>
         </div>
-        <div class="flex items-center gap-1 text-xs font-semibold text-orange-400 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 group-hover:bg-brand-primary group-hover:text-white transition-all shrink-0">
-          <span>Ver Bar</span>
-          <ArrowTopRightOnSquareIcon class="w-3.5 h-3.5" />
+        <div class="flex items-center gap-1.5 text-xs font-bold text-white bg-white/20 px-4 py-2 rounded-xl border border-white/30 group-hover:bg-white group-hover:text-amber-600 transition-all shrink-0">
+          <span>Explorar</span>
+          <ArrowTopRightOnSquareIcon class="w-4 h-4" />
         </div>
       </router-link>
 
