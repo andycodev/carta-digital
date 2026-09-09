@@ -10,8 +10,9 @@ import type {
 
 const STORAGE_KEY_CATEGORIES = 'delicias_categories_v2'
 const STORAGE_KEY_PRODUCTS = 'delicias_products_v2'
-const STORAGE_KEY_CONFIG = 'delicias_config_v2'
+const STORAGE_KEY_CONFIG = 'delicias_config_v3'   // v3 → fuerza refresco limpio
 const STORAGE_KEY_WHATSAPP_SUBS = 'delicias_whatsapp_subs_v1'
+const STORAGE_KEY_CONFIG_TS = 'delicias_config_ts_v3'  // timestamp del último fetch
 
 const DEFAULT_WHATSAPP_SUBS: WhatsAppSubscriber[] = [
   {
@@ -253,7 +254,31 @@ const products = ref<Producto[]>(loadInitial(STORAGE_KEY_PRODUCTS, DEFAULT_PRODU
 const config = ref<AppConfig>(loadInitial(STORAGE_KEY_CONFIG, DEFAULT_CONFIG))
 const whatsappSubscriptions = ref<WhatsAppSubscriber[]>(loadInitial(STORAGE_KEY_WHATSAPP_SUBS, DEFAULT_WHATSAPP_SUBS))
 
-// Auto-sync configuration with Supabase restaurant_settings table
+// ─────────────────────────────────────────────────────────────────────────────
+// Sync de restaurant_settings desde Supabase
+// Estrategia:
+//  1. Siempre fetch fresco al iniciar (DB = fuente de verdad, ignora cache).
+//  2. Realtime escucha cambios y aplica en tiempo real.
+//  3. Polling de respaldo cada 5 min (para mobile donde el WS puede caer).
+//  4. La DB sobreescribe el localStorage — no al revés.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Mapea la fila de Supabase a AppConfig, usando DB como fuente de verdad. */
+function rowToConfig(row: Record<string, unknown>, base: typeof config.value): typeof config.value {
+  return {
+    nombre_negocio:               (row.nombre_negocio                as string  ?? base.nombre_negocio),
+    subtitulo:                    (row.subtitulo                     as string  ?? base.subtitulo),
+    telefono_whatsapp:            (row.telefono_whatsapp             as string  ?? base.telefono_whatsapp),
+    whatsapp_group_url:           (row.whatsapp_group_url            as string  ?? base.whatsapp_group_url),
+    whatsapp_subscription_enabled:(row.whatsapp_subscription_enabled as boolean ?? base.whatsapp_subscription_enabled),
+    mostrar_precios_carta:        (row.mostrar_precios_carta         as boolean ?? base.mostrar_precios_carta),
+    mostrar_precios_flyers:       (row.mostrar_precios_flyers        as boolean ?? base.mostrar_precios_flyers),
+    musica_activa:                (row.musica_activa                 as boolean ?? base.musica_activa),
+    musica_url:                   (row.musica_url                    as string  ?? base.musica_url),
+    musica_volumen:               (row.musica_volumen                as number  ?? base.musica_volumen),
+  }
+}
+
 async function syncConfigWithSupabase() {
   if (!isSupabaseConfigured) return
   try {
@@ -264,65 +289,80 @@ async function syncConfigWithSupabase() {
       .maybeSingle()
 
     if (error) {
-      console.warn('Supabase restaurant_settings fetch note:', error.message)
+      console.warn('[Config] Supabase restaurant_settings error:', error.message)
       return
     }
 
     if (data) {
-      config.value = {
-        ...config.value,
-        nombre_negocio: data.nombre_negocio || config.value.nombre_negocio,
-        subtitulo: data.subtitulo || config.value.subtitulo,
-        telefono_whatsapp: data.telefono_whatsapp || config.value.telefono_whatsapp,
-        whatsapp_group_url: data.whatsapp_group_url || config.value.whatsapp_group_url,
-        whatsapp_subscription_enabled: data.whatsapp_subscription_enabled ?? config.value.whatsapp_subscription_enabled,
-        mostrar_precios_carta: data.mostrar_precios_carta ?? config.value.mostrar_precios_carta,
-        mostrar_precios_flyers: data.mostrar_precios_flyers ?? config.value.mostrar_precios_flyers,
-        musica_activa: data.musica_activa ?? config.value.musica_activa,
-        musica_url: data.musica_url || config.value.musica_url,
-        musica_volumen: data.musica_volumen ?? config.value.musica_volumen
-      }
+      // DB siempre gana — sobreescribimos config completo
+      config.value = rowToConfig(data as Record<string, unknown>, DEFAULT_CONFIG)
       persist(STORAGE_KEY_CONFIG, config.value)
+      try { localStorage.setItem(STORAGE_KEY_CONFIG_TS, String(Date.now())) } catch (_) { /* noop */ }
+      console.log('[Config] Synced from Supabase ✓')
     }
   } catch (e) {
-    console.warn('Supabase config sync exception:', e)
+    console.warn('[Config] Sync exception:', e)
   }
 }
 
-// Initial sync
+// Llamada inicial — siempre al cargar la app
 syncConfigWithSupabase()
 
-// Realtime listener for restaurant_settings
+// Realtime con reconexión automática
 if (isSupabaseConfigured) {
-  try {
-    supabase
-      .channel('public:restaurant_settings_realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'restaurant_settings' },
-        (payload) => {
-          const r = payload.new as any
-          if (r) {
-            config.value = {
-              ...config.value,
-              nombre_negocio: r.nombre_negocio || config.value.nombre_negocio,
-              subtitulo: r.subtitulo || config.value.subtitulo,
-              telefono_whatsapp: r.telefono_whatsapp || config.value.telefono_whatsapp,
-              whatsapp_group_url: r.whatsapp_group_url || config.value.whatsapp_group_url,
-              whatsapp_subscription_enabled: r.whatsapp_subscription_enabled ?? config.value.whatsapp_subscription_enabled,
-              mostrar_precios_carta: r.mostrar_precios_carta ?? config.value.mostrar_precios_carta,
-              mostrar_precios_flyers: r.mostrar_precios_flyers ?? config.value.mostrar_precios_flyers,
-              musica_activa: r.musica_activa ?? config.value.musica_activa,
-              musica_url: r.musica_url || config.value.musica_url,
-              musica_volumen: r.musica_volumen ?? config.value.musica_volumen
-            }
-            persist(STORAGE_KEY_CONFIG, config.value)
-          }
+  let realtimeChannel = supabase
+    .channel('restaurant_settings_rt')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'restaurant_settings' },
+      (payload) => {
+        const row = payload.new as Record<string, unknown>
+        if (row && Object.keys(row).length > 0) {
+          config.value = rowToConfig(row, config.value)
+          persist(STORAGE_KEY_CONFIG, config.value)
+          console.log('[Config] Realtime update applied ✓')
         }
-      )
-      .subscribe()
-  } catch (e) {
-    console.warn('Realtime settings subscription error:', e)
+      }
+    )
+    .subscribe((status, err) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('[Config] Realtime connected ✓')
+      } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+        console.warn('[Config] Realtime lost. Reconnecting...', err?.message)
+        // Reconexión manual con back-off suave
+        setTimeout(() => {
+          try { supabase.removeChannel(realtimeChannel) } catch (_) { /* noop */ }
+          realtimeChannel = supabase
+            .channel('restaurant_settings_rt_retry')
+            .on('postgres_changes',
+              { event: '*', schema: 'public', table: 'restaurant_settings' },
+              (payload) => {
+                const row = payload.new as Record<string, unknown>
+                if (row && Object.keys(row).length > 0) {
+                  config.value = rowToConfig(row, config.value)
+                  persist(STORAGE_KEY_CONFIG, config.value)
+                  console.log('[Config] Realtime (retry) update applied ✓')
+                }
+              }
+            )
+            .subscribe()
+        }, 5000)
+      }
+    })
+
+  // Polling de respaldo cada 5 minutos — cubre dispositivos móviles
+  // donde el WebSocket puede caer silenciosamente en background.
+  setInterval(() => {
+    syncConfigWithSupabase()
+  }, 5 * 60 * 1000)
+
+  // Refresco inmediato al volver al tab/app desde background (iOS/Android)
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        syncConfigWithSupabase()
+      }
+    })
   }
 }
 
