@@ -152,44 +152,43 @@ defineExpose({
 
         <!-- Scrollable Content Wrapper -->
         <div class="overflow-y-auto no-scrollbar flex-1">
-          <!-- Video Player Showcase (Hero Completo sin zoom forzado) -->
+          <!-- Video Player Showcase: Formato vertical 9:16 completo, sin ningún recorte ni zoom -->
           <div ref="videoContainerRef"
-            class="relative w-full bg-slate-950 overflow-hidden flex items-center justify-center group border-b border-slate-200/80 min-h-[220px] max-h-[50vh]">
-            <!-- Fondo difuminado ambiental en tiempo real (evita barras negras duras) -->
+            class="relative w-full bg-slate-950 flex items-center justify-center p-3 sm:p-4 overflow-hidden border-b border-slate-200/80">
+            <!-- Fondo difuminado ambiental en tiempo real del mismo video -->
             <video src="/videos/bar-promo.mp4" autoplay loop muted playsinline aria-hidden="true"
-              class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-35 scale-110 pointer-events-none">
+              class="absolute inset-0 w-full h-full object-cover blur-3xl opacity-35 scale-125 pointer-events-none">
             </video>
 
-            <!-- Video principal sin recorte ni zoom artificial (100% completo) -->
-            <video ref="videoRef" src="/videos/bar-promo.mp4" autoplay loop muted playsinline preload="auto"
-              class="relative z-10 w-full h-auto max-h-[48vh] object-contain mx-auto">
-              Tu navegador no soporta el elemento de video.
-            </video>
+            <!-- Marco del Video Vertical (9:16 nativo) 100% completo, sin zoom ni recortes -->
+            <div class="relative z-10 aspect-[9/16] h-[340px] sm:h-[400px] max-w-full rounded-2xl overflow-hidden shadow-2xl border border-white/20 bg-black flex items-center justify-center">
+              <video ref="videoRef" src="/videos/bar-promo.mp4" poster="/videos/bar-poster.jpg"
+                autoplay loop muted playsinline preload="auto"
+                class="w-full h-full object-cover">
+                Tu navegador no soporta el elemento de video.
+              </video>
 
-            <!-- Gradient overlays sutiles en los extremos -->
-            <div class="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/70 to-transparent pointer-events-none z-15"></div>
-            <div class="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/50 to-transparent pointer-events-none z-15"></div>
+              <!-- Video badge & Live indicator -->
+              <div class="absolute bottom-3 left-3 z-20 pointer-events-none">
+                <span
+                  class="bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping"></span>
+                  <span>Ambiente en vivo</span>
+                </span>
+              </div>
 
-            <!-- Video badge & Live indicator -->
-            <div class="absolute bottom-3 left-4 flex items-center gap-2 z-20 pointer-events-none">
-              <span
-                class="bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-md">
-                <span class="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping"></span>
-                <span>Ambiente en vivo</span>
-              </span>
+              <!-- Botón toggle audio del video -->
+              <button type="button" @click="toggleVideoMute"
+                class="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer border backdrop-blur-md shadow-lg"
+                :class="isVideoMuted
+                  ? 'bg-black/60 text-white border-white/30 hover:bg-black/80'
+                  : 'bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400 shadow-amber-500/30 animate-pulse'"
+                :title="isVideoMuted ? 'Activar audio del video' : 'Silenciar video'">
+                <SpeakerXMarkIcon v-if="isVideoMuted" class="w-4 h-4" />
+                <SpeakerWaveIcon v-else class="w-4 h-4" />
+                <span>{{ isVideoMuted ? 'Audio' : 'Sonando' }}</span>
+              </button>
             </div>
-
-            <!-- Botón toggle audio del video -->
-            <button type="button" @click="toggleVideoMute"
-              class="absolute bottom-3 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer border backdrop-blur-md shadow-lg"
-              :class="isVideoMuted
-                ? 'bg-black/60 text-white border-white/30 hover:bg-black/80'
-                : 'bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400 shadow-amber-500/30 animate-pulse'"
-              :title="isVideoMuted ? 'Activar audio del video' : 'Silenciar video'">
-              <SpeakerXMarkIcon v-if="isVideoMuted" class="w-4 h-4" />
-              <SpeakerWaveIcon v-else class="w-4 h-4" />
-              <span>{{ isVideoMuted ? 'Activar audio' : 'Con audio' }}</span>
-            </button>
           </div>
 
           <!-- Modal Text Content & Persuasive Copy (High Contrast, Ultra-Legible) -->

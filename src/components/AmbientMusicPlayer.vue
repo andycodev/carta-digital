@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useMenuStore } from '@/composables/useMenuStore'
 import { useAudioController } from '@/composables/useAudioController'
 import { MusicalNoteIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline'
@@ -20,6 +20,10 @@ const pausedByVideo = ref(false)
 
 const STORAGE_KEY_MUSIC_PREF = 'delicias_user_wants_music'
 
+const effectiveMusicUrl = computed(() => {
+  return config.value.musica_url || '/audio/ambient.mp3'
+})
+
 // ── Controles públicos (expuestos para uso externo si hace falta) ──────────────
 
 function pauseMusic() {
@@ -31,7 +35,7 @@ function pauseMusic() {
 }
 
 function resumeMusic() {
-  if (audioRef.value && pausedByVideo.value && config.value.musica_activa) {
+  if (audioRef.value && pausedByVideo.value && config.value.musica_activa !== false) {
     audioRef.value.volume = (config.value.musica_volumen || 35) / 100
     audioRef.value.play()
       .then(() => {
@@ -60,7 +64,7 @@ watch(videoAudioActive, (videoOn) => {
 // ── Toggle manual del usuario ─────────────────────────────────────────────────
 
 function toggleMusic() {
-  if (!audioRef.value || !config.value.musica_url) return
+  if (!audioRef.value) return
 
   if (isPlaying.value) {
     audioRef.value.pause()
@@ -93,7 +97,7 @@ watch(() => config.value.musica_volumen, (newVol) => {
   }
 })
 
-watch(() => config.value.musica_url, () => {
+watch(effectiveMusicUrl, () => {
   if (audioRef.value && isPlaying.value) {
     audioRef.value.pause()
     audioRef.value.load()
@@ -107,11 +111,10 @@ watch(() => config.value.musica_url, () => {
 
 /**
  * Intenta iniciar la música ambiental.
- * Llamado tanto en el primer scroll como en el primer click/touch.
- * Solo activa si el usuario no ha dicho explícitamente que no quiere música.
+ * Llamado en el primer scroll, click, touch o interacción.
  */
 function tryStartMusic() {
-  if (!audioRef.value || isPlaying.value || !config.value.musica_activa) return
+  if (!audioRef.value || isPlaying.value || config.value.musica_activa === false) return
   const pref = sessionStorage.getItem(STORAGE_KEY_MUSIC_PREF)
   if (pref === 'false') return
 
@@ -127,21 +130,20 @@ function tryStartMusic() {
       pausedByVideo.value = false
       sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'true')
     })
-    .catch(() => { /* Bloqueado — se intentará en siguiente interacción */ })
+    .catch(() => { /* Bloqueado — se reintentará en siguiente toque */ })
 }
 
 function handleFirstInteraction() {
   tryStartMusic()
-  // Remover todos los listeners de primera interacción
-  document.removeEventListener('click', handleFirstInteraction, { capture: true })
-  document.removeEventListener('touchstart', handleFirstInteraction, { capture: true })
-  document.removeEventListener('keydown', handleFirstInteraction, { capture: true })
+  removeInteractionListeners()
 }
 
-// El scroll tiene su propio listener para QR/acceso directo (primer scroll activa sin necesidad de click)
-function handleFirstScroll() {
-  tryStartMusic()
-  document.removeEventListener('scroll', handleFirstScroll, { capture: true })
+function removeInteractionListeners() {
+  document.removeEventListener('scroll', handleFirstInteraction, { capture: true })
+  document.removeEventListener('click', handleFirstInteraction, { capture: true })
+  document.removeEventListener('touchstart', handleFirstInteraction, { capture: true })
+  document.removeEventListener('pointerdown', handleFirstInteraction, { capture: true })
+  document.removeEventListener('keydown', handleFirstInteraction, { capture: true })
 }
 
 // ── Montaje: intentar autoplay ────────────────────────────────────────────────
@@ -151,13 +153,12 @@ onMounted(() => {
 
   audioRef.value.volume = (config.value.musica_volumen || 35) / 100
 
-  if (!config.value.musica_activa) return
+  if (config.value.musica_activa === false) return
 
   const pref = sessionStorage.getItem(STORAGE_KEY_MUSIC_PREF)
   if (pref === 'false') return
 
-  // Estrategia: intentar autoplay muted → desmutar 100ms después.
-  // Esta técnica funciona incluso en navegadores modernos sin interacción previa.
+  // Estrategia: intentar autoplay muted → desmutar inmediatamente después.
   audioRef.value.muted = true
   audioRef.value.play()
     .then(() => {
@@ -170,48 +171,47 @@ onMounted(() => {
         if (audioRef.value && isPlaying.value) {
           audioRef.value.muted = false
         }
-      }, 100)
+      }, 150)
     })
     .catch(() => {
-      // Autoplay completamente bloqueado → activar en primer scroll o interacción.
-      // El scroll cubre el caso de acceso por QR/enlace directo.
-      document.addEventListener('scroll', handleFirstScroll, { capture: true, once: true })
+      // Autoplay bloqueado por política del navegador → activar en primer toque/scroll
+      document.addEventListener('scroll', handleFirstInteraction, { capture: true, once: true })
       document.addEventListener('click', handleFirstInteraction, { capture: true, once: true })
       document.addEventListener('touchstart', handleFirstInteraction, { capture: true, once: true })
+      document.addEventListener('pointerdown', handleFirstInteraction, { capture: true, once: true })
       document.addEventListener('keydown', handleFirstInteraction, { capture: true, once: true })
     })
 })
 
 onUnmounted(() => {
-  document.removeEventListener('scroll', handleFirstScroll, { capture: true })
-  document.removeEventListener('click', handleFirstInteraction, { capture: true })
-  document.removeEventListener('touchstart', handleFirstInteraction, { capture: true })
-  document.removeEventListener('keydown', handleFirstInteraction, { capture: true })
+  removeInteractionListeners()
 })
 </script>
 
 <template>
-  <div v-if="config.musica_activa" class="inline-flex items-center">
-    <audio ref="audioRef" :src="config.musica_url" loop preload="none" @ended="isPlaying = false"></audio>
+  <div v-if="config.musica_activa !== false" class="inline-flex items-center">
+    <audio ref="audioRef" :src="effectiveMusicUrl" loop preload="auto" @ended="isPlaying = false"></audio>
 
     <button type="button" @click="toggleMusic"
-      class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border cursor-pointer"
+      class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border cursor-pointer shadow-2xs min-h-[36px]"
       :class="[
         isPlaying
           ? darkMode
-            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-            : 'bg-amber-50 text-amber-900 border-amber-300 shadow-2xs'
+            ? 'bg-amber-500/25 text-amber-300 border-amber-400/50 ring-1 ring-amber-400/20'
+            : 'bg-amber-100 text-amber-950 border-amber-300 ring-1 ring-amber-400/30 shadow-xs'
           : darkMode
-            ? 'bg-white/10 text-slate-400 border-white/15 hover:bg-white/20'
-            : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50'
+            ? 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20'
+            : 'bg-white text-slate-700 border-slate-200 hover:text-slate-900 hover:bg-slate-50'
       ]" :title="isPlaying ? 'Pausar música ambiental' : 'Reproducir música ambiental'"
       aria-label="Control de música ambiental">
-      <SpeakerWaveIcon v-if="isPlaying"
-        :class="['w-3.5 h-3.5', darkMode ? 'text-amber-400 animate-pulse' : 'text-amber-700 animate-pulse']" />
-      <MusicalNoteIcon v-else :class="['w-3.5 h-3.5', darkMode ? 'text-slate-400' : 'text-slate-500']" />
+      <span class="relative flex h-3.5 w-3.5 items-center justify-center">
+        <span v-if="isPlaying" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-60"></span>
+        <SpeakerWaveIcon v-if="isPlaying" :class="['w-3.5 h-3.5 relative z-10', darkMode ? 'text-amber-300' : 'text-amber-700']" />
+        <MusicalNoteIcon v-else :class="['w-3.5 h-3.5', darkMode ? 'text-slate-300' : 'text-slate-600']" />
+      </span>
 
-      <span class="text-[11px] font-medium hidden sm:inline">
-        {{ isPlaying ? 'Música activa' : 'Música' }}
+      <span class="text-xs font-bold hidden min-[360px]:inline">
+        {{ isPlaying ? 'Música' : 'Música' }}
       </span>
     </button>
   </div>
