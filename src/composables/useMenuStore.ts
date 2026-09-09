@@ -7,6 +7,7 @@ import type {
   WhatsAppSubscriber,
   WhatsAppSubscriptionStatus
 } from '@/types/database'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
 const STORAGE_KEY_CATEGORIES = 'delicias_categories_v2'
 const STORAGE_KEY_PRODUCTS = 'delicias_products_v2'
@@ -255,6 +256,7 @@ const categories = ref<Categoria[]>(loadInitial(STORAGE_KEY_CATEGORIES, DEFAULT_
 const products = ref<Producto[]>(loadInitial(STORAGE_KEY_PRODUCTS, DEFAULT_PRODUCTS))
 const config = ref<AppConfig>(loadInitial(STORAGE_KEY_CONFIG, DEFAULT_CONFIG))
 const whatsappSubscriptions = ref<WhatsAppSubscriber[]>(loadInitial(STORAGE_KEY_WHATSAPP_SUBS, DEFAULT_WHATSAPP_SUBS))
+const isRealtimeMenuConnected = ref<boolean>(false)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sync de restaurant_settings desde Supabase
@@ -366,6 +368,147 @@ if (isSupabaseConfigured) {
       if (document.visibilityState === 'visible') {
         syncConfigWithSupabase()
       }
+    })
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Realtime para Productos y Categorías
+// Estrategia idéntica a restaurant_settings:
+//  1. Fetch inicial desde Supabase (DB = fuente de verdad).
+//  2. Realtime escucha INSERT/UPDATE/DELETE y muta los refs globales.
+//  3. Polling de respaldo cada 5 min para mobile/WebSocket caído.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function syncMenuWithSupabase() {
+  if (!isSupabaseConfigured) return
+  try {
+    const [{ data: catData, error: catErr }, { data: prodData, error: prodErr }] = await Promise.all([
+      supabase.from('categorias').select('*').eq('activo', true).order('orden', { ascending: true }),
+      supabase.from('productos').select('*').order('nombre', { ascending: true })
+    ])
+
+    if (catErr) console.warn('[Menu] Error fetching categorias:', catErr.message)
+    else if (catData) {
+      categories.value = catData
+      persist(STORAGE_KEY_CATEGORIES, catData)
+    }
+
+    if (prodErr) console.warn('[Menu] Error fetching productos:', prodErr.message)
+    else if (prodData) {
+      products.value = prodData.map((p: Producto) => ({ ...p, precio: Number(p.precio) }))
+      persist(STORAGE_KEY_PRODUCTS, products.value)
+    }
+
+    console.log('[Menu] Synced from Supabase ✓')
+  } catch (e) {
+    console.warn('[Menu] Sync exception:', e)
+  }
+}
+
+// Carga inicial
+syncMenuWithSupabase()
+
+if (isSupabaseConfigured) {
+  let menuChannel: RealtimeChannel = supabase
+    .channel('menu_store_rt')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'productos' },
+      (payload) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload
+        console.log('[Menu] Realtime productos:', eventType)
+
+        if (eventType === 'INSERT') {
+          const inserted = { ...(newRecord as Producto), precio: Number((newRecord as Producto).precio) }
+          const idx = products.value.findIndex(p => p.id === inserted.id)
+          if (idx >= 0) {
+            products.value[idx] = inserted
+          } else {
+            products.value.push(inserted)
+          }
+        } else if (eventType === 'UPDATE') {
+          const updated = { ...(newRecord as Producto), precio: Number((newRecord as Producto).precio) }
+          const idx = products.value.findIndex(p => p.id === updated.id)
+          if (idx !== -1) {
+            products.value[idx] = updated
+          } else {
+            // Producto que fue creado offline y ahora llega por realtime
+            products.value.push(updated)
+          }
+        } else if (eventType === 'DELETE') {
+          const deletedId = (oldRecord as { id: string })?.id
+          if (deletedId) {
+            products.value = products.value.filter(p => p.id !== deletedId)
+          }
+        }
+
+        persist(STORAGE_KEY_PRODUCTS, products.value)
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'categorias' },
+      (payload) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload
+        console.log('[Menu] Realtime categorias:', eventType)
+
+        if (eventType === 'INSERT') {
+          const cat = newRecord as Categoria
+          if (cat.activo && !categories.value.some(c => c.id === cat.id)) {
+            categories.value.push(cat)
+            categories.value.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+          }
+        } else if (eventType === 'UPDATE') {
+          const cat = newRecord as Categoria
+          const idx = categories.value.findIndex(c => c.id === cat.id)
+          if (!cat.activo) {
+            if (idx !== -1) categories.value.splice(idx, 1)
+          } else {
+            if (idx !== -1) {
+              categories.value[idx] = cat
+            } else {
+              categories.value.push(cat)
+            }
+            categories.value.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+          }
+        } else if (eventType === 'DELETE') {
+          const deletedId = (oldRecord as { id: string })?.id
+          if (deletedId) {
+            categories.value = categories.value.filter(c => c.id !== deletedId)
+            // Limpia también productos huérfanos
+            products.value = products.value.filter(p => p.categoria_id !== deletedId)
+          }
+        }
+
+        persist(STORAGE_KEY_CATEGORIES, categories.value)
+        persist(STORAGE_KEY_PRODUCTS, products.value)
+      }
+    )
+    .subscribe((status, err) => {
+      isRealtimeMenuConnected.value = status === 'SUBSCRIBED'
+      if (status === 'SUBSCRIBED') {
+        console.log('[Menu] Realtime conectado ✓')
+      } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+        console.warn('[Menu] Realtime perdido. Reconectando...', err?.message)
+        setTimeout(() => {
+          try { supabase.removeChannel(menuChannel) } catch (_) { /* noop */ }
+          menuChannel = supabase
+            .channel('menu_store_rt_retry')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'productos' }, () => syncMenuWithSupabase())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'categorias' }, () => syncMenuWithSupabase())
+            .subscribe((s) => { isRealtimeMenuConnected.value = s === 'SUBSCRIBED' })
+        }, 5000)
+      }
+    })
+
+  // Polling de respaldo cada 5 min
+  setInterval(() => syncMenuWithSupabase(), 5 * 60 * 1000)
+
+  // Re-sync al volver al tab desde background (iOS/Android)
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncMenuWithSupabase()
     })
   }
 }
@@ -675,6 +818,8 @@ export function useMenuStore() {
     subscribeToWhatsApp,
     updateWhatsAppSubscriptionStatus,
     deleteWhatsAppSubscription,
-    exportSubscribersToCSV
+    exportSubscribersToCSV,
+    isRealtimeMenuConnected,
+    isSupabaseConfigured
   }
 }

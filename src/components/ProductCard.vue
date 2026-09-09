@@ -51,12 +51,12 @@ function handleImageError() {
     <!-- Right: Product Information -->
     <div class="flex-1 min-w-0">
       <!-- Product Name -->
-      <h3 class="font-semibold text-white text-sm leading-tight mb-1">
+      <h3 class="font-semibold text-slate-900 text-sm leading-tight mb-1">
         {{ product.nombre }}
       </h3>
 
       <!-- Product Description -->
-      <p v-if="product.descripcion" class="text-xs text-slate-400 mb-2 line-clamp-2">
+      <p v-if="product.descripcion" class="text-xs text-slate-600 mb-2 line-clamp-2">
         {{ product.descripcion }}
       </p>
 

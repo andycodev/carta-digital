@@ -21,14 +21,16 @@ import {
 
 const {
   categories,
-  products
+  products,
+  isRealtimeMenuConnected,
+  isSupabaseConfigured: storeIsSupabaseConfigured
 } = useMenuStore()
 
 const route = useRoute()
 const { trackVisit } = useVisitorTracker()
 
-const isRealtimeConnected = ref(true)
-const isSupabaseConfigured = ref(false)
+const isRealtimeConnected = isRealtimeMenuConnected
+const isSupabaseConfigured = storeIsSupabaseConfigured
 const isLoading = ref(false)
 const lastRealtimeEvent = ref<string | null>(null)
 
@@ -37,7 +39,7 @@ onMounted(() => {
 
   usePageMeta({
     title: 'Las Delicias Restobar | Carta Digital',
-    description: '\uD83C\uDF7D\uFE0F Las Delicias y La Eskinita se unieron para ofrecerte lo mejor de nuestra comida en un solo lugar. \uD83D\uDE0B\uD83C\uDF54\uD83D\uDD25',
+    description: '🍽️ Las Delicias y La Eskinita se unieron para ofrecerte lo mejor de nuestra comida en un solo lugar. 😋🍔🔥',
     url: 'https://carta.lasdeliciasrestobar.com/'
   })
 })
