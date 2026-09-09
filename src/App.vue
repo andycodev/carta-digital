@@ -1,0 +1,9 @@
+<script setup lang="ts">
+</script>
+
+<template>
+  <div data-theme="delicias" class="min-h-screen bg-[#F8F9FA] text-slate-800 font-sans">
+    <router-view />
+  </div>
+</template>
+

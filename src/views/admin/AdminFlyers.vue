@@ -1,0 +1,1938 @@
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue'
+import { useMenuStore } from '@/composables/useMenuStore'
+import logoImg from '@/assets/las-delicias-logo.png'
+import type { Categoria, Producto } from '@/types/database'
+import {
+  ArrowDownTrayIcon,
+  PhotoIcon,
+  SunIcon,
+  FireIcon,
+  MoonIcon,
+  SparklesIcon,
+  BuildingStorefrontIcon,
+  EyeIcon,
+  TvIcon,
+  DevicePhoneMobileIcon,
+  DocumentTextIcon,
+  MapPinIcon,
+  TagIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  AdjustmentsHorizontalIcon
+} from '@heroicons/vue/24/outline'
+
+type FlyerFormat = 'whatsapp' | 'social' | 'tv'
+type LogoPosition = 'center' | 'left' | 'right' | 'badge'
+type FontTheme = 'serif' | 'sans' | 'condensed' | 'editorial'
+type FrameStyle = 'double' | 'modern_cards' | 'minimal_lines' | 'ornamental'
+
+interface FormatOption {
+  id: FlyerFormat
+  name: string
+  subtitle: string
+  ratioText: string
+  width: number
+  height: number
+  icon: typeof DevicePhoneMobileIcon
+}
+
+interface AIStyle {
+  id: string
+  name: string
+  subtitle: string
+  badge: string
+  isDark: boolean
+  bgGrad: [string, string, string]
+  outerBorder: string
+  innerBorder: string
+  cornerAccent: string
+  titleColor: string
+  sloganColor: string
+  textColor: string
+  descColor: string
+  priceColor: string
+  leaderColor: string
+  footerBg: string
+  footerText: string
+  footerSub: string
+  promoGrad: [string, string, string]
+  promoBorder: string
+  promoTagColor: string
+  promoTitleColor: string
+  promoSubColor: string
+}
+
+const businessAddress = 'Calle Santa Catalina 14001 - Chongoyape'
+
+const formatOptions: FormatOption[] = [
+  {
+    id: 'whatsapp',
+    name: 'Estado de WhatsApp',
+    subtitle: 'Formato vertical optimizado para celular',
+    ratioText: 'Vertical 9:16 (1080 x 1920 px)',
+    width: 1080,
+    height: 1920,
+    icon: DevicePhoneMobileIcon
+  },
+  {
+    id: 'social',
+    name: 'Publicación para Redes',
+    subtitle: 'Formato cuadrado para feed de Instagram y Facebook',
+    ratioText: 'Cuadrado 1:1 (1080 x 1080 px)',
+    width: 1080,
+    height: 1080,
+    icon: PhotoIcon
+  },
+  {
+    id: 'tv',
+    name: 'Pantalla de TV',
+    subtitle: 'Formato horizontal de alta legibilidad para 32" y 42"',
+    ratioText: 'Horizontal 16:9 (1920 x 1080 px)',
+    width: 1920,
+    height: 1080,
+    icon: TvIcon
+  }
+]
+
+// Curated AI Design Styles maintaining brand identity with visual diversity
+const aiStyles: AIStyle[] = [
+  {
+    id: 'classic',
+    name: 'Clásico Las Delicias',
+    subtitle: 'Luz gourmet, lino cálido y acentos cobre terracota',
+    badge: 'Luz Cálida',
+    isDark: false,
+    bgGrad: ['#FFFFFF', '#FAF8F5', '#F4F0EA'],
+    outerBorder: '#CBD5E1',
+    innerBorder: '#C2410C',
+    cornerAccent: '#C2410C',
+    titleColor: '#0F172A',
+    sloganColor: '#C2410C',
+    textColor: '#0F172A',
+    descColor: '#64748B',
+    priceColor: '#C2410C',
+    leaderColor: '#94A3B8',
+    footerBg: '#0F172A',
+    footerText: '#FFFFFF',
+    footerSub: '#CBD5E1',
+    promoGrad: ['#C2410C', '#EA580C', '#9A3412'],
+    promoBorder: '#FED7AA',
+    promoTagColor: '#FEF08A',
+    promoTitleColor: '#FFFFFF',
+    promoSubColor: '#FFEDD5'
+  },
+  {
+    id: 'bistro_dark',
+    name: 'Bistró Pizarra & Oro',
+    subtitle: 'Ambiente nocturno exclusivo con reflejos dorados',
+    badge: 'Gourmet Noche',
+    isDark: true,
+    bgGrad: ['#1A1E26', '#0F131A', '#080A0E'],
+    outerBorder: '#334155',
+    innerBorder: '#D97706',
+    cornerAccent: '#F59E0B',
+    titleColor: '#F8FAFC',
+    sloganColor: '#F59E0B',
+    textColor: '#F1F5F9',
+    descColor: '#94A3B8',
+    priceColor: '#FBBF24',
+    leaderColor: '#475569',
+    footerBg: '#06080B',
+    footerText: '#F8FAFC',
+    footerSub: '#CBD5E1',
+    promoGrad: ['#B45309', '#D97706', '#78350F'],
+    promoBorder: '#FDE68A',
+    promoTagColor: '#FEF3C7',
+    promoTitleColor: '#FFFFFF',
+    promoSubColor: '#FEF3C7'
+  },
+  {
+    id: 'cocktail_velvet',
+    name: 'Coctelería Velvet',
+    subtitle: 'Borgoña y azul zafiro con iluminación de restobar',
+    badge: 'Bar & Lounge',
+    isDark: true,
+    bgGrad: ['#241224', '#150A19', '#0A040E'],
+    outerBorder: '#4C1D4F',
+    innerBorder: '#E11D48',
+    cornerAccent: '#FB7185',
+    titleColor: '#FFF1F2',
+    sloganColor: '#FB7185',
+    textColor: '#FFF1F2',
+    descColor: '#FDA4AF',
+    priceColor: '#F43F5E',
+    leaderColor: '#701A4F',
+    footerBg: '#0D0412',
+    footerText: '#FFFFFF',
+    footerSub: '#FECDD3',
+    promoGrad: ['#BE123C', '#E11D48', '#881337'],
+    promoBorder: '#FECDD3',
+    promoTagColor: '#FFE4E6',
+    promoTitleColor: '#FFFFFF',
+    promoSubColor: '#FFE4E6'
+  },
+  {
+    id: 'rustic_wood',
+    name: 'Rústico Brasa & Madera',
+    subtitle: 'Tonos terrosos, leña noble y calidez artesanal',
+    badge: 'Artesanal',
+    isDark: true,
+    bgGrad: ['#261F1A', '#191310', '#0E0B09'],
+    outerBorder: '#44342B',
+    innerBorder: '#EA580C',
+    cornerAccent: '#F97316',
+    titleColor: '#FAF5EE',
+    sloganColor: '#FB923C',
+    textColor: '#FAF5EE',
+    descColor: '#A8998D',
+    priceColor: '#FB923C',
+    leaderColor: '#574338',
+    footerBg: '#0E0B09',
+    footerText: '#FAF5EE',
+    footerSub: '#D6C7BA',
+    promoGrad: ['#C2410C', '#EA580C', '#7C2D12'],
+    promoBorder: '#FDBA74',
+    promoTagColor: '#FED7AA',
+    promoTitleColor: '#FFFFFF',
+    promoSubColor: '#FED7AA'
+  },
+  {
+    id: 'modern_minimal',
+    name: 'Minimalista Editorial',
+    subtitle: 'Blanco perla, tipografía pura y diseño contemporáneo',
+    badge: 'Moderno',
+    isDark: false,
+    bgGrad: ['#FFFFFF', '#FAFAFA', '#F3F4F6'],
+    outerBorder: '#E2E8F0',
+    innerBorder: '#0F172A',
+    cornerAccent: '#0F172A',
+    titleColor: '#0F172A',
+    sloganColor: '#475569',
+    textColor: '#0F172A',
+    descColor: '#64748B',
+    priceColor: '#0F172A',
+    leaderColor: '#CBD5E1',
+    footerBg: '#0F172A',
+    footerText: '#FFFFFF',
+    footerSub: '#94A3B8',
+    promoGrad: ['#0F172A', '#1E293B', '#0F172A'],
+    promoBorder: '#94A3B8',
+    promoTagColor: '#CBD5E1',
+    promoTitleColor: '#FFFFFF',
+    promoSubColor: '#94A3B8'
+  }
+]
+
+const { categories, products, config } = useMenuStore()
+
+const selectedFormat = ref<FlyerFormat>('whatsapp')
+const selectedCategoryId = ref<string>('')
+const selectedAiStyleId = ref<string>('classic')
+const showDescriptionsInFlyer = ref(true)
+const showPricesInFlyer = ref<boolean>(config.value.mostrar_precios_flyers !== false)
+
+// Structural variation states (Logo position, typography, and frame design)
+const selectedLogoPosition = ref<LogoPosition>('center')
+const selectedFontTheme = ref<FontTheme>('serif')
+const selectedFrameStyle = ref<FrameStyle>('double')
+
+const isGenerating = ref(false)
+const downloadingCatId = ref<string | null>(null)
+const flyerPreviewUrl = ref<string | null>(null)
+const cachedLogo = ref<HTMLImageElement | null>(null)
+const aiGenerationToast = ref<string | null>(null)
+
+// Mobile & Compact UX states
+const activeMobileTab = ref<'preview' | 'controls'>('preview')
+const accordions = ref({
+  format: true,
+  content: true,
+  style: true,
+  downloads: false
+})
+
+function toggleAccordion(section: 'format' | 'content' | 'style' | 'downloads') {
+  accordions.value[section] = !accordions.value[section]
+}
+
+const activeSlogan = computed(() => {
+  return config.value.subtitulo || 'Sabor, música y buenos momentos'
+})
+
+const currentStyle = computed(() => {
+  return aiStyles.find(s => s.id === selectedAiStyleId.value) || aiStyles[0]
+})
+
+function getFontFamilies(theme: FontTheme) {
+  switch (theme) {
+    case 'serif':
+      return {
+        title: "'Playfair Display', Georgia, serif",
+        dish: "'Playfair Display', Georgia, serif",
+        desc: "italic 'Playfair Display', Georgia, serif",
+        price: "'Playfair Display', Georgia, serif",
+        slogan: "italic 'Playfair Display', Georgia, serif"
+      }
+    case 'sans':
+      return {
+        title: "'Outfit', 'Inter', system-ui, sans-serif",
+        dish: "'Outfit', 'Inter', system-ui, sans-serif",
+        desc: "'Inter', system-ui, sans-serif",
+        price: "'Outfit', 'Inter', system-ui, sans-serif",
+        slogan: "'Outfit', system-ui, sans-serif"
+      }
+    case 'condensed':
+      return {
+        title: "'Impact', 'Trebuchet MS', sans-serif",
+        dish: "'Trebuchet MS', 'Impact', sans-serif",
+        desc: "'Trebuchet MS', sans-serif",
+        price: "'Trebuchet MS', sans-serif",
+        slogan: "'Trebuchet MS', sans-serif"
+      }
+    case 'editorial':
+    default:
+      return {
+        title: "'Palatino Linotype', 'Book Antiqua', serif",
+        dish: "'Palatino Linotype', 'Book Antiqua', serif",
+        desc: "italic 'Palatino Linotype', 'Book Antiqua', serif",
+        price: "'Palatino Linotype', 'Book Antiqua', serif",
+        slogan: "'Palatino Linotype', 'Book Antiqua', serif"
+      }
+  }
+}
+
+function loadLogo(): Promise<HTMLImageElement> {
+  if (cachedLogo.value) {
+    return Promise.resolve(cachedLogo.value)
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      cachedLogo.value = img
+      resolve(img)
+    }
+    img.onerror = () => {
+      console.warn('Could not load logo image for flyer canvas.')
+      reject(new Error('Logo image failed to load'))
+    }
+    img.src = logoImg
+    if (img.complete && img.naturalWidth > 0) {
+      cachedLogo.value = img
+      resolve(img)
+    }
+  })
+}
+
+const mainCartas = computed(() => categories.value)
+
+const currentCategory = computed(() => {
+  return categories.value.find(c => c.id === selectedCategoryId.value) || categories.value[0]
+})
+
+function getCategoryIcon(name: string, siempre247: boolean) {
+  const n = name.toLowerCase()
+  if (siempre247 || n.includes('bar') || n.includes('coctel') || n.includes('bebida')) {
+    return SparklesIcon
+  }
+  if (n.includes('desayuno')) return SunIcon
+  if (n.includes('almuerzo')) return FireIcon
+  if (n.includes('cena')) return MoonIcon
+  return BuildingStorefrontIcon
+}
+
+function sanitizeFilename(raw: string): string {
+  return raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+function drawRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.arcTo(x + w, y, x + w, y + r, r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
+  ctx.lineTo(x + r, y + h)
+  ctx.arcTo(x, y + h, x, y + h - r, r)
+  ctx.lineTo(x, y + r)
+  ctx.arcTo(x, y, x + r, y, r)
+  ctx.closePath()
+}
+
+// Draw framed perimeter based on selected frame style
+function drawPerimeterFrame(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  style: AIStyle,
+  frame: FrameStyle
+) {
+  if (frame === 'double' || frame === 'ornamental') {
+    ctx.strokeStyle = style.outerBorder
+    ctx.lineWidth = 4
+    ctx.strokeRect(35, 35, w - 70, h - 70)
+
+    ctx.strokeStyle = style.innerBorder
+    ctx.lineWidth = 2.5
+    ctx.strokeRect(50, 50, w - 100, h - 100)
+
+    // Corner accents
+    for (const [cx, cy] of [[50, 50], [w - 50, 50], [50, h - 50], [w - 50, h - 50]]) {
+      ctx.fillStyle = style.cornerAccent
+      if (frame === 'ornamental') {
+        ctx.beginPath()
+        ctx.arc(cx, cy, 8, 0, Math.PI * 2)
+        ctx.fill()
+      } else {
+        ctx.fillRect(cx - 6, cy - 6, 12, 12)
+      }
+    }
+  } else if (frame === 'minimal_lines') {
+    ctx.strokeStyle = style.innerBorder
+    ctx.lineWidth = 1.5
+    ctx.strokeRect(45, 45, w - 90, h - 90)
+
+    // Minimal diamond marks
+    for (const [cx, cy] of [[45, 45], [w - 45, 45], [45, h - 45], [w - 45, h - 45]]) {
+      ctx.fillStyle = style.cornerAccent
+      ctx.beginPath()
+      ctx.moveTo(cx, cy - 7)
+      ctx.lineTo(cx + 7, cy)
+      ctx.lineTo(cx, cy + 7)
+      ctx.lineTo(cx - 7, cy)
+      ctx.closePath()
+      ctx.fill()
+    }
+  } else if (frame === 'modern_cards') {
+    drawRoundedRect(ctx, 35, 35, w - 70, h - 70, 24)
+    ctx.strokeStyle = style.innerBorder
+    ctx.lineWidth = 2.5
+    ctx.stroke()
+  }
+}
+
+// Novel Daily Design Generator (IA Engine)
+function generateNovelDesignVariation() {
+  const logoPositions: LogoPosition[] = ['center', 'left', 'right', 'badge']
+  const fontThemes: FontTheme[] = ['serif', 'sans', 'condensed', 'editorial']
+  const frameStyles: FrameStyle[] = ['double', 'modern_cards', 'minimal_lines', 'ornamental']
+
+  // Advance each dimension for a fresh unique combination
+  const nextLogoIdx = (logoPositions.indexOf(selectedLogoPosition.value) + 1) % logoPositions.length
+  selectedLogoPosition.value = logoPositions[nextLogoIdx]
+
+  const nextFontIdx = (fontThemes.indexOf(selectedFontTheme.value) + 1) % fontThemes.length
+  selectedFontTheme.value = fontThemes[nextFontIdx]
+
+  const nextFrameIdx = (frameStyles.indexOf(selectedFrameStyle.value) + 1) % frameStyles.length
+  selectedFrameStyle.value = frameStyles[nextFrameIdx]
+
+  const nextStyleIdx = (aiStyles.findIndex(s => s.id === selectedAiStyleId.value) + 1) % aiStyles.length
+  selectedAiStyleId.value = aiStyles[nextStyleIdx].id
+
+  const logoLabels = { center: 'Centro', left: 'Izquierda', right: 'Derecha', badge: 'Badge Sello' }
+  const fontLabels = { serif: 'Serif Clásica', sans: 'Sans Moderna', condensed: 'Bistró Urbano', editorial: 'Editorial' }
+
+  aiGenerationToast.value = `¡Nuevo Diseño del Día!: Logo en ${logoLabels[selectedLogoPosition.value]} • Fuente: ${fontLabels[selectedFontTheme.value]}`
+  setTimeout(() => {
+    aiGenerationToast.value = null
+  }, 3200)
+}
+
+// -------------------------------------------------------------
+// RENDER ENGINE 1: WHATSAPP (VERTICAL 9:16 - 1080 x 1920 px)
+// -------------------------------------------------------------
+async function renderFlyerWhatsApp(cat: Categoria, dishes: Producto[], style: AIStyle): Promise<HTMLCanvasElement> {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1080
+  canvas.height = 1920
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Context error')
+
+  const fonts = getFontFamilies(selectedFontTheme.value)
+
+  // Gradient background
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, 1920)
+  bgGrad.addColorStop(0, style.bgGrad[0])
+  bgGrad.addColorStop(0.35, style.bgGrad[1])
+  bgGrad.addColorStop(1, style.bgGrad[2])
+  ctx.fillStyle = bgGrad
+  ctx.fillRect(0, 0, 1080, 1920)
+
+  // Perimeter frame
+  drawPerimeterFrame(ctx, 1080, 1920, style, selectedFrameStyle.value)
+
+  let currentY = 85
+  const isAlmuerzo = (cat.nombre || '').toLowerCase().includes('almuerzo')
+
+  // --- HEADER SECTION ADAPTING TO LOGO POSITION ---
+  if (selectedLogoPosition.value === 'left') {
+    // Logo on Left, Titles on Right
+    const logoSize = 190
+    const logoX = 85
+    const logoY = 85
+
+    try {
+      const logo = await loadLogo()
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2)
+      ctx.closePath()
+      ctx.clip()
+      ctx.drawImage(logo, logoX, logoY, logoSize, logoSize)
+      ctx.restore()
+
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 2, 0, Math.PI * 2)
+      ctx.strokeStyle = style.innerBorder
+      ctx.lineWidth = 3
+      ctx.stroke()
+    } catch {
+      // fallback
+    }
+
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 38px ${fonts.title}`
+    ctx.fillText('LAS DELICIAS RESTOBAR', 300, 140)
+
+    ctx.fillStyle = style.sloganColor
+    ctx.font = `bold 20px ${fonts.slogan}`
+    ctx.fillText(activeSlogan.value, 300, 175)
+
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 42px ${fonts.title}`
+    ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 300, 235)
+
+    ctx.fillStyle = style.descColor
+    ctx.font = `18px ${fonts.desc}`
+    ctx.fillText(cat.siempre_disponible ? 'Servicio Continuo • Todo el Día' : `Horario: ${cat.hora_inicio.substring(0, 5)} a ${cat.hora_fin.substring(0, 5)} hrs`, 300, 268)
+
+    currentY = 305
+  } else if (selectedLogoPosition.value === 'right') {
+    // Logo on Right, Titles on Left
+    const logoSize = 190
+    const logoX = 1080 - 85 - logoSize
+    const logoY = 85
+
+    try {
+      const logo = await loadLogo()
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2)
+      ctx.closePath()
+      ctx.clip()
+      ctx.drawImage(logo, logoX, logoY, logoSize, logoSize)
+      ctx.restore()
+
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 2, 0, Math.PI * 2)
+      ctx.strokeStyle = style.innerBorder
+      ctx.lineWidth = 3
+      ctx.stroke()
+    } catch {
+      // fallback
+    }
+
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 38px ${fonts.title}`
+    ctx.fillText('LAS DELICIAS RESTOBAR', 85, 140)
+
+    ctx.fillStyle = style.sloganColor
+    ctx.font = `bold 20px ${fonts.slogan}`
+    ctx.fillText(activeSlogan.value, 85, 175)
+
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 42px ${fonts.title}`
+    ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 85, 235)
+
+    ctx.fillStyle = style.descColor
+    ctx.font = `18px ${fonts.desc}`
+    ctx.fillText(cat.siempre_disponible ? 'Servicio Continuo • Todo el Día' : `Horario: ${cat.hora_inicio.substring(0, 5)} a ${cat.hora_fin.substring(0, 5)} hrs`, 85, 268)
+
+    currentY = 305
+  } else {
+    // Center or Badge Style
+    const logoSize = selectedLogoPosition.value === 'badge' ? 220 : 240
+    const logoX = (1080 - logoSize) / 2
+    const logoY = 80
+
+    try {
+      const logo = await loadLogo()
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2)
+      ctx.closePath()
+      ctx.clip()
+      ctx.drawImage(logo, logoX, logoY, logoSize, logoSize)
+      ctx.restore()
+
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 3, 0, Math.PI * 2)
+      ctx.strokeStyle = style.innerBorder
+      ctx.lineWidth = 3
+      ctx.stroke()
+
+      if (selectedLogoPosition.value === 'badge') {
+        ctx.beginPath()
+        ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 8, 0, Math.PI * 2)
+        ctx.strokeStyle = style.outerBorder
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
+    } catch {
+      ctx.fillStyle = style.titleColor
+      ctx.font = `bold 44px ${fonts.title}`
+      ctx.textAlign = 'center'
+      ctx.fillText('LAS DELICIAS RESTOBAR', 540, 150)
+    }
+
+    currentY = logoY + logoSize + 35
+    ctx.fillStyle = style.sloganColor
+    ctx.font = `bold 24px ${fonts.slogan}`
+    ctx.textAlign = 'center'
+    ctx.fillText(activeSlogan.value, 540, currentY)
+
+    currentY += 55
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 48px ${fonts.title}`
+    ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 540, currentY)
+
+    currentY += 35
+    ctx.fillStyle = style.descColor
+    ctx.font = `22px ${fonts.desc}`
+    if (cat.siempre_disponible) {
+      ctx.fillText('Servicio Continuo • Disponible Todo el Día', 540, currentY)
+    } else {
+      ctx.fillText(`Horario: ${cat.hora_inicio.substring(0, 5)} a ${cat.hora_fin.substring(0, 5)} hrs`, 540, currentY)
+    }
+  }
+
+  // Divider
+  currentY += 35
+  ctx.beginPath()
+  ctx.moveTo(100, currentY)
+  ctx.lineTo(980, currentY)
+  ctx.strokeStyle = style.outerBorder
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  ctx.fillStyle = style.innerBorder
+  ctx.beginPath()
+  ctx.arc(540, currentY, 5, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Promo Banner (Almuerzo)
+  if (isAlmuerzo) {
+    const badgeY = currentY + 22
+    const badgeW = 860
+    const badgeH = 135
+    const badgeX = (1080 - badgeW) / 2
+
+    const pGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeW, badgeY + badgeH)
+    pGrad.addColorStop(0, style.promoGrad[0])
+    pGrad.addColorStop(0.5, style.promoGrad[1])
+    pGrad.addColorStop(1, style.promoGrad[2])
+
+    drawRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, 22)
+    ctx.fillStyle = pGrad
+    ctx.fill()
+
+    ctx.strokeStyle = style.promoBorder
+    ctx.lineWidth = 2.5
+    ctx.stroke()
+
+    ctx.textAlign = 'center'
+    ctx.fillStyle = style.promoTagColor
+    ctx.font = `bold 17px ${fonts.dish}`
+    ctx.fillText('★ PROMOCIÓN ESPECIAL DE ALMUERZO ★', 540, badgeY + 34)
+
+    ctx.fillStyle = style.promoTitleColor
+    ctx.font = `900 46px ${fonts.title}`
+    ctx.fillText(showPricesInFlyer.value ? 'MENÚ DESDE S/ 10' : 'MENÚ EJECUTIVO DEL DÍA', 540, badgeY + 84)
+
+    ctx.fillStyle = style.promoSubColor
+    ctx.font = `italic bold 22px ${fonts.slogan}`
+    ctx.fillText('“Buen sabor, buen precio.”', 540, badgeY + 117)
+
+    currentY = badgeY + badgeH + 45
+  } else {
+    currentY += 50
+  }
+
+  // Dishes list
+  const maxItems = isAlmuerzo ? 9 : 11
+  const items = dishes.slice(0, maxItems)
+  const availableHeight = 1720 - currentY
+  const rowHeight = items.length > 0 ? Math.min(105, Math.floor(availableHeight / items.length)) : 95
+
+  for (let i = 0; i < items.length; i++) {
+    const dish = items[i]
+    const itemY = currentY + (i * rowHeight)
+
+    // Modern card background if style selected
+    if (selectedFrameStyle.value === 'modern_cards') {
+      const cardBg = style.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
+      drawRoundedRect(ctx, 80, itemY - 32, 920, rowHeight - 12, 14)
+      ctx.fillStyle = cardBg
+      ctx.fill()
+    }
+
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.textColor
+    ctx.font = `bold 27px ${fonts.dish}`
+
+    let displayName = dish.nombre
+    const maxChars = showPricesInFlyer.value ? 33 : 48
+    if (displayName.length > maxChars) displayName = displayName.substring(0, maxChars - 2) + '...'
+    ctx.fillText(displayName, 110, itemY)
+
+    if (showPricesInFlyer.value) {
+      ctx.textAlign = 'right'
+      ctx.fillStyle = style.priceColor
+      ctx.font = `bold 29px ${fonts.price}`
+      const priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+      ctx.fillText(priceStr, 970, itemY)
+
+      // Dotted leader line
+      const nameWidth = ctx.measureText(displayName).width
+      const priceWidth = ctx.measureText(priceStr).width
+      const dotStartX = 110 + nameWidth + 15
+      const dotEndX = 970 - priceWidth - 15
+      if (dotEndX > dotStartX) {
+        ctx.beginPath()
+        ctx.setLineDash([4, 6])
+        ctx.strokeStyle = style.leaderColor
+        ctx.lineWidth = 1.5
+        ctx.moveTo(dotStartX, itemY - 7)
+        ctx.lineTo(dotEndX, itemY - 7)
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+    }
+
+    // Description if enabled
+    if (showDescriptionsInFlyer.value && dish.descripcion && rowHeight >= 85) {
+      ctx.textAlign = 'left'
+      ctx.fillStyle = style.descColor
+      ctx.font = `19px ${fonts.desc}`
+      let desc = dish.descripcion
+      if (desc.length > 62) desc = desc.substring(0, 60) + '...'
+      ctx.fillText(desc, 110, itemY + 28)
+    }
+  }
+
+  // Footer bar
+  const footerY = 1750
+  ctx.fillStyle = style.footerBg
+  ctx.fillRect(60, footerY - 45, 960, 130)
+  ctx.fillStyle = style.innerBorder
+  ctx.fillRect(60, footerY - 45, 960, 4)
+
+  ctx.textAlign = 'center'
+  ctx.fillStyle = style.footerText
+  ctx.font = `bold 24px ${fonts.title}`
+  ctx.fillText('¡VISÍTANOS Y DISFRUTA DE NUESTRA CARTA DIGITAL!', 540, footerY - 5)
+
+  ctx.fillStyle = style.footerSub
+  ctx.font = `bold 18px ${fonts.dish}`
+  ctx.fillText(businessAddress, 540, footerY + 26)
+
+  ctx.fillStyle = style.descColor
+  ctx.font = `16px ${fonts.desc}`
+  ctx.fillText('Escanea nuestro código QR en el local • Las Delicias Restobar', 540, footerY + 54)
+
+  return canvas
+}
+
+// -------------------------------------------------------------
+// RENDER ENGINE 2: REDES SOCIALES (CUADRADO 1:1 - 1080 x 1080 px)
+// -------------------------------------------------------------
+async function renderFlyerSocial(cat: Categoria, dishes: Producto[], style: AIStyle): Promise<HTMLCanvasElement> {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1080
+  canvas.height = 1080
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Context error')
+
+  const fonts = getFontFamilies(selectedFontTheme.value)
+
+  // Gradient background
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, 1080)
+  bgGrad.addColorStop(0, style.bgGrad[0])
+  bgGrad.addColorStop(0.5, style.bgGrad[1])
+  bgGrad.addColorStop(1, style.bgGrad[2])
+  ctx.fillStyle = bgGrad
+  ctx.fillRect(0, 0, 1080, 1080)
+
+  // Frame
+  drawPerimeterFrame(ctx, 1080, 1080, style, selectedFrameStyle.value)
+
+  let currentY = 50
+  const isAlmuerzo = (cat.nombre || '').toLowerCase().includes('almuerzo')
+
+  if (selectedLogoPosition.value === 'left') {
+    const logoSize = 130
+    const logoX = 65
+    const logoY = 48
+
+    try {
+      const logo = await loadLogo()
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2)
+      ctx.closePath()
+      ctx.clip()
+      ctx.drawImage(logo, logoX, logoY, logoSize, logoSize)
+      ctx.restore()
+
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 2, 0, Math.PI * 2)
+      ctx.strokeStyle = style.innerBorder
+      ctx.lineWidth = 2.5
+      ctx.stroke()
+    } catch {
+      // fallback
+    }
+
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 28px ${fonts.title}`
+    ctx.fillText('LAS DELICIAS RESTOBAR', 220, 85)
+
+    ctx.fillStyle = style.sloganColor
+    ctx.font = `bold 16px ${fonts.slogan}`
+    ctx.fillText(activeSlogan.value, 220, 112)
+
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 32px ${fonts.title}`
+    ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 220, 155)
+
+    currentY = 195
+  } else if (selectedLogoPosition.value === 'right') {
+    const logoSize = 130
+    const logoX = 1080 - 65 - logoSize
+    const logoY = 48
+
+    try {
+      const logo = await loadLogo()
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2)
+      ctx.closePath()
+      ctx.clip()
+      ctx.drawImage(logo, logoX, logoY, logoSize, logoSize)
+      ctx.restore()
+
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 2, 0, Math.PI * 2)
+      ctx.strokeStyle = style.innerBorder
+      ctx.lineWidth = 2.5
+      ctx.stroke()
+    } catch {
+      // fallback
+    }
+
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 28px ${fonts.title}`
+    ctx.fillText('LAS DELICIAS RESTOBAR', 70, 85)
+
+    ctx.fillStyle = style.sloganColor
+    ctx.font = `bold 16px ${fonts.slogan}`
+    ctx.fillText(activeSlogan.value, 70, 112)
+
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 32px ${fonts.title}`
+    ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 70, 155)
+
+    currentY = 195
+  } else {
+    // Center or badge
+    const logoSize = 150
+    const logoX = (1080 - logoSize) / 2
+
+    try {
+      const logo = await loadLogo()
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, currentY + logoSize / 2, logoSize / 2, 0, Math.PI * 2)
+      ctx.closePath()
+      ctx.clip()
+      ctx.drawImage(logo, logoX, currentY, logoSize, logoSize)
+      ctx.restore()
+
+      ctx.beginPath()
+      ctx.arc(logoX + logoSize / 2, currentY + logoSize / 2, logoSize / 2 + 2, 0, Math.PI * 2)
+      ctx.strokeStyle = style.innerBorder
+      ctx.lineWidth = 2.5
+      ctx.stroke()
+
+      currentY += logoSize + 16
+    } catch {
+      currentY += 60
+    }
+
+    ctx.fillStyle = style.sloganColor
+    ctx.font = `bold 18px ${fonts.slogan}`
+    ctx.textAlign = 'center'
+    ctx.fillText(activeSlogan.value, 540, currentY)
+
+    currentY += 32
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 36px ${fonts.title}`
+    ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 540, currentY)
+
+    currentY += 24
+    ctx.fillStyle = style.descColor
+    ctx.font = `16px ${fonts.desc}`
+    if (cat.siempre_disponible) {
+      ctx.fillText('Servicio Continuo • Todo el Día', 540, currentY)
+    } else {
+      ctx.fillText(`Horario: ${cat.hora_inicio.substring(0, 5)} a ${cat.hora_fin.substring(0, 5)} hrs`, 540, currentY)
+    }
+  }
+
+  // Divider
+  currentY += 20
+  ctx.beginPath()
+  ctx.moveTo(140, currentY)
+  ctx.lineTo(940, currentY)
+  ctx.strokeStyle = style.outerBorder
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+
+  if (isAlmuerzo) {
+    const badgeY = currentY + 12
+    const badgeW = 820
+    const badgeH = 88
+    const badgeX = (1080 - badgeW) / 2
+
+    const pGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeW, badgeY + badgeH)
+    pGrad.addColorStop(0, style.promoGrad[0])
+    pGrad.addColorStop(0.5, style.promoGrad[1])
+    pGrad.addColorStop(1, style.promoGrad[2])
+
+    drawRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, 16)
+    ctx.fillStyle = pGrad
+    ctx.fill()
+
+    ctx.textAlign = 'center'
+    ctx.fillStyle = style.promoTitleColor
+    ctx.font = `900 32px ${fonts.title}`
+    ctx.fillText(showPricesInFlyer.value ? 'MENÚ DESDE S/ 10' : 'MENÚ EJECUTIVO DEL DÍA', 540, badgeY + 45)
+
+    ctx.fillStyle = style.promoSubColor
+    ctx.font = `italic bold 18px ${fonts.slogan}`
+    ctx.fillText('“Buen sabor, buen precio.”', 540, badgeY + 74)
+
+    currentY = badgeY + badgeH + 28
+  } else {
+    currentY += 38
+  }
+
+  // 2-Columns grid for compact square
+  const items = dishes.slice(0, isAlmuerzo ? 8 : 10)
+  const isTwoCol = items.length > 5
+
+  if (isTwoCol) {
+    const colCount = Math.ceil(items.length / 2)
+    const colW = 430
+    const col1X = 75
+    const col2X = 575
+    const rowH = Math.min(85, Math.floor((950 - currentY) / colCount))
+
+    for (let i = 0; i < items.length; i++) {
+      const dish = items[i]
+      const isCol2 = i >= colCount
+      const colX = isCol2 ? col2X : col1X
+      const rowIndex = isCol2 ? i - colCount : i
+      const itemY = currentY + (rowIndex * rowH)
+
+      if (selectedFrameStyle.value === 'modern_cards') {
+        const cardBg = style.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
+        drawRoundedRect(ctx, colX - 10, itemY - 24, colW + 20, rowH - 8, 10)
+        ctx.fillStyle = cardBg
+        ctx.fill()
+      }
+
+      ctx.textAlign = 'left'
+      ctx.fillStyle = style.textColor
+      ctx.font = `bold 19px ${fonts.dish}`
+      let dName = dish.nombre
+      const maxLen = showPricesInFlyer.value ? 22 : 32
+      if (dName.length > maxLen) dName = dName.substring(0, maxLen - 2) + '...'
+      ctx.fillText(dName, colX, itemY)
+
+      if (showPricesInFlyer.value) {
+        ctx.textAlign = 'right'
+        ctx.fillStyle = style.priceColor
+        ctx.font = `bold 20px ${fonts.price}`
+        const priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+        ctx.fillText(priceStr, colX + colW, itemY)
+
+        // Leader
+        ctx.beginPath()
+        ctx.setLineDash([3, 4])
+        ctx.strokeStyle = style.leaderColor
+        ctx.lineWidth = 1
+        ctx.moveTo(colX + ctx.measureText(dName).width + 10, itemY - 5)
+        ctx.lineTo(colX + colW - ctx.measureText(priceStr).width - 10, itemY - 5)
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+
+      if (showDescriptionsInFlyer.value && dish.descripcion && rowH >= 65) {
+        ctx.textAlign = 'left'
+        ctx.fillStyle = style.descColor
+        ctx.font = `14px ${fonts.desc}`
+        let desc = dish.descripcion
+        if (desc.length > 28) desc = desc.substring(0, 26) + '...'
+        ctx.fillText(desc, colX, itemY + 20)
+      }
+    }
+  } else {
+    const rowH = Math.min(95, Math.floor((950 - currentY) / Math.max(items.length, 1)))
+    for (let i = 0; i < items.length; i++) {
+      const dish = items[i]
+      const itemY = currentY + (i * rowH)
+
+      if (selectedFrameStyle.value === 'modern_cards') {
+        const cardBg = style.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
+        drawRoundedRect(ctx, 120, itemY - 26, 840, rowH - 10, 12)
+        ctx.fillStyle = cardBg
+        ctx.fill()
+      }
+
+      ctx.textAlign = 'left'
+      ctx.fillStyle = style.textColor
+      ctx.font = `bold 24px ${fonts.dish}`
+      ctx.fillText(dish.nombre, 140, itemY)
+
+      if (showPricesInFlyer.value) {
+        ctx.textAlign = 'right'
+        ctx.fillStyle = style.priceColor
+        ctx.font = `bold 26px ${fonts.price}`
+        const priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+        ctx.fillText(priceStr, 940, itemY)
+
+        ctx.beginPath()
+        ctx.setLineDash([3, 5])
+        ctx.strokeStyle = style.leaderColor
+        ctx.lineWidth = 1.5
+        ctx.moveTo(140 + ctx.measureText(dish.nombre).width + 15, itemY - 6)
+        ctx.lineTo(940 - ctx.measureText(priceStr).width - 15, itemY - 6)
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+
+      if (showDescriptionsInFlyer.value && dish.descripcion && rowH >= 75) {
+        ctx.textAlign = 'left'
+        ctx.fillStyle = style.descColor
+        ctx.font = `16px ${fonts.desc}`
+        let desc = dish.descripcion
+        if (desc.length > 55) desc = desc.substring(0, 52) + '...'
+        ctx.fillText(desc, 140, itemY + 24)
+      }
+    }
+  }
+
+  // Footer bar
+  ctx.fillStyle = style.footerBg
+  ctx.fillRect(50, 975, 980, 68)
+  ctx.textAlign = 'center'
+  ctx.fillStyle = style.footerText
+  ctx.font = `bold 16px ${fonts.title}`
+  ctx.fillText('LAS DELICIAS RESTOBAR  •  SABOR, MÚSICA Y BUENOS MOMENTOS', 540, 1002)
+  ctx.fillStyle = style.footerSub
+  ctx.font = `bold 14px ${fonts.dish}`
+  ctx.fillText(`${businessAddress}  •  Carta Digital en Vivo`, 540, 1025)
+
+  return canvas
+}
+
+// -------------------------------------------------------------
+// RENDER ENGINE 3: PANTALLA DE TV (HORIZONTAL 16:9 - 1920 x 1080 px)
+// STRICT ZERO OVERLAP ARCHITECTURE
+// -------------------------------------------------------------
+async function renderFlyerTV(cat: Categoria, dishes: Producto[], style: AIStyle): Promise<HTMLCanvasElement> {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1920
+  canvas.height = 1080
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Context error')
+
+  const fonts = getFontFamilies(selectedFontTheme.value)
+
+  // Gradient background
+  const bgGrad = ctx.createLinearGradient(0, 0, 1920, 1080)
+  bgGrad.addColorStop(0, style.bgGrad[0])
+  bgGrad.addColorStop(0.5, style.bgGrad[1])
+  bgGrad.addColorStop(1, style.bgGrad[2])
+  ctx.fillStyle = bgGrad
+  ctx.fillRect(0, 0, 1920, 1080)
+
+  // Frame
+  drawPerimeterFrame(ctx, 1920, 1080, style, selectedFrameStyle.value)
+
+  // HEADER LOGO POSITIONING (Strictly contained between Y: 40 and Y: 190)
+  let logoX = 85
+  const logoY = 50
+  const logoSize = 130
+
+  if (selectedLogoPosition.value === 'right') {
+    logoX = 1920 - 85 - logoSize
+  } else if (selectedLogoPosition.value === 'center' || selectedLogoPosition.value === 'badge') {
+    logoX = (1920 - logoSize) / 2
+  }
+
+  try {
+    const logo = await loadLogo()
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2)
+    ctx.closePath()
+    ctx.clip()
+    ctx.drawImage(logo, logoX, logoY, logoSize, logoSize)
+    ctx.restore()
+
+    ctx.beginPath()
+    ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 2, 0, Math.PI * 2)
+    ctx.strokeStyle = style.innerBorder
+    ctx.lineWidth = 3
+    ctx.stroke()
+  } catch {
+    // fallback
+  }
+
+  // Titles placement
+  if (selectedLogoPosition.value === 'left') {
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 44px ${fonts.title}`
+    ctx.fillText('LAS DELICIAS RESTOBAR', 245, 100)
+
+    ctx.fillStyle = style.sloganColor
+    ctx.font = `bold 22px ${fonts.slogan}`
+    ctx.fillText(activeSlogan.value, 245, 138)
+
+    ctx.textAlign = 'right'
+    ctx.fillStyle = style.titleColor
+    ctx.font = `900 38px ${fonts.title}`
+    ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 1835, 105)
+
+    ctx.fillStyle = style.descColor
+    ctx.font = `19px ${fonts.desc}`
+    ctx.fillText(cat.siempre_disponible ? 'Servicio Continuo 24/7' : `Horario: ${cat.hora_inicio.substring(0, 5)} - ${cat.hora_fin.substring(0, 5)} hrs`, 1835, 142)
+  } else if (selectedLogoPosition.value === 'right') {
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.titleColor
+    ctx.font = `900 38px ${fonts.title}`
+    ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 85, 105)
+
+    ctx.fillStyle = style.descColor
+    ctx.font = `19px ${fonts.desc}`
+    ctx.fillText(cat.siempre_disponible ? 'Servicio Continuo 24/7' : `Horario: ${cat.hora_inicio.substring(0, 5)} - ${cat.hora_fin.substring(0, 5)} hrs`, 85, 142)
+
+    ctx.textAlign = 'right'
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 44px ${fonts.title}`
+    ctx.fillText('LAS DELICIAS RESTOBAR', logoX - 30, 100)
+
+    ctx.fillStyle = style.sloganColor
+    ctx.font = `bold 22px ${fonts.slogan}`
+    ctx.fillText(activeSlogan.value, logoX - 30, 138)
+  } else {
+    // Center or badge
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.titleColor
+    ctx.font = `bold 38px ${fonts.title}`
+    ctx.fillText('LAS DELICIAS RESTOBAR', 85, 105)
+    ctx.fillStyle = style.sloganColor
+    ctx.font = `bold 20px ${fonts.slogan}`
+    ctx.fillText(activeSlogan.value, 85, 142)
+
+    ctx.textAlign = 'right'
+    ctx.fillStyle = style.titleColor
+    ctx.font = `900 38px ${fonts.title}`
+    ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 1835, 105)
+    ctx.fillStyle = style.descColor
+    ctx.font = `19px ${fonts.desc}`
+    ctx.fillText(cat.siempre_disponible ? 'Servicio Continuo 24/7' : `Horario: ${cat.hora_inicio.substring(0, 5)} - ${cat.hora_fin.substring(0, 5)} hrs`, 1835, 142)
+  }
+
+  // Divider Line at Y: 205
+  ctx.beginPath()
+  ctx.moveTo(70, 205)
+  ctx.lineTo(1850, 205)
+  ctx.strokeStyle = style.outerBorder
+  ctx.lineWidth = 2.5
+  ctx.stroke()
+
+  ctx.fillStyle = style.innerBorder
+  ctx.beginPath()
+  ctx.arc(960, 205, 6, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Promo Banner (Almuerzo TV)
+  const isAlmuerzo = (cat.nombre || '').toLowerCase().includes('almuerzo')
+  let contentStartY = 265
+
+  if (isAlmuerzo) {
+    const promoY = 222
+    const promoW = 1760
+    const promoH = 68
+    const promoX = (1920 - promoW) / 2
+
+    const pGrad = ctx.createLinearGradient(promoX, promoY, promoX + promoW, promoY + promoH)
+    pGrad.addColorStop(0, style.promoGrad[0])
+    pGrad.addColorStop(0.5, style.promoGrad[1])
+    pGrad.addColorStop(1, style.promoGrad[2])
+
+    drawRoundedRect(ctx, promoX, promoY, promoW, promoH, 16)
+    ctx.fillStyle = pGrad
+    ctx.fill()
+
+    ctx.strokeStyle = style.promoBorder
+    ctx.lineWidth = 2
+    ctx.stroke()
+
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.promoTagColor
+    ctx.font = `bold 16px ${fonts.dish}`
+    ctx.fillText('★ PROMOCIÓN ESPECIAL DE ALMUERZO ★', promoX + 30, promoY + 42)
+
+    ctx.textAlign = 'center'
+    ctx.fillStyle = style.promoTitleColor
+    ctx.font = `900 32px ${fonts.title}`
+    ctx.fillText(showPricesInFlyer.value ? 'MENÚ DESDE S/ 10' : 'MENÚ EJECUTIVO DEL DÍA', 960, promoY + 44)
+
+    ctx.textAlign = 'right'
+    ctx.fillStyle = style.promoSubColor
+    ctx.font = `italic bold 20px ${fonts.slogan}`
+    ctx.fillText('“Buen sabor, buen precio.”', promoX + promoW - 30, promoY + 42)
+
+    contentStartY = 320
+  }
+
+  // Two columns of dishes
+  const maxDishes = isAlmuerzo ? 12 : 14
+  const items = dishes.slice(0, maxDishes)
+  const colCount = Math.ceil(items.length / 2)
+
+  const colW = 820
+  const col1X = 85
+  const col2X = 1015
+  const maxAvailableH = 960 - contentStartY
+  const rowH = colCount > 0 ? Math.min(100, Math.floor(maxAvailableH / colCount)) : 90
+
+  for (let i = 0; i < items.length; i++) {
+    const dish = items[i]
+    const isCol2 = i >= colCount
+    const colX = isCol2 ? col2X : col1X
+    const rowIndex = isCol2 ? i - colCount : i
+    const itemY = contentStartY + (rowIndex * rowH)
+
+    if (selectedFrameStyle.value === 'modern_cards') {
+      const cardBg = style.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
+      drawRoundedRect(ctx, colX - 15, itemY - 26, colW + 30, rowH - 8, 12)
+      ctx.fillStyle = cardBg
+      ctx.fill()
+    }
+
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.textColor
+    ctx.font = `bold 26px ${fonts.dish}`
+    let dName = dish.nombre
+    const maxLen = showPricesInFlyer.value ? 35 : 48
+    if (dName.length > maxLen) dName = dName.substring(0, maxLen - 2) + '...'
+    ctx.fillText(dName, colX, itemY)
+
+    if (showPricesInFlyer.value) {
+      ctx.textAlign = 'right'
+      ctx.fillStyle = style.priceColor
+      ctx.font = `bold 28px ${fonts.price}`
+      const priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+      ctx.fillText(priceStr, colX + colW, itemY)
+
+      const nameWidth = ctx.measureText(dName).width
+      const priceWidth = ctx.measureText(priceStr).width
+      const dotStart = colX + nameWidth + 16
+      const dotEnd = colX + colW - priceWidth - 16
+      if (dotEnd > dotStart) {
+        ctx.beginPath()
+        ctx.setLineDash([4, 6])
+        ctx.strokeStyle = style.leaderColor
+        ctx.lineWidth = 2
+        ctx.moveTo(dotStart, itemY - 8)
+        ctx.lineTo(dotEnd, itemY - 8)
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+    }
+
+    if (showDescriptionsInFlyer.value && dish.descripcion && rowH >= 85) {
+      ctx.textAlign = 'left'
+      ctx.fillStyle = style.descColor
+      ctx.font = `20px ${fonts.desc}`
+      let desc = dish.descripcion
+      if (desc.length > 54) desc = desc.substring(0, 51) + '...'
+      ctx.fillText(desc, colX, itemY + 28)
+    }
+  }
+
+  // Footer
+  ctx.fillStyle = style.footerBg
+  ctx.fillRect(60, 980, 1800, 58)
+
+  ctx.textAlign = 'center'
+  ctx.fillStyle = style.footerText
+  ctx.font = `bold 20px ${fonts.title}`
+  ctx.fillText(
+    `LAS DELICIAS RESTOBAR  •  ${businessAddress}  •  CARTA DIGITAL EN VIVO`,
+    960,
+    1016
+  )
+
+  return canvas
+}
+
+async function renderFlyerCanvas(cat: Categoria, format: FlyerFormat, style: AIStyle): Promise<HTMLCanvasElement> {
+  const catDishes = products.value.filter(p => p.categoria_id === cat.id && p.disponible)
+
+  if (format === 'tv') {
+    return renderFlyerTV(cat, catDishes, style)
+  } else if (format === 'social') {
+    return renderFlyerSocial(cat, catDishes, style)
+  } else {
+    return renderFlyerWhatsApp(cat, catDishes, style)
+  }
+}
+
+async function generatePreview() {
+  const cat = currentCategory.value
+  if (!cat) return
+
+  isGenerating.value = true
+  try {
+    const canvas = await renderFlyerCanvas(cat, selectedFormat.value, currentStyle.value)
+    flyerPreviewUrl.value = canvas.toDataURL('image/png')
+  } catch (err) {
+    console.error('Error generating preview:', err)
+  } finally {
+    isGenerating.value = false
+  }
+}
+
+async function downloadFlyerForCategory(cat: Categoria) {
+  downloadingCatId.value = cat.id
+  try {
+    const canvas = await renderFlyerCanvas(cat, selectedFormat.value, currentStyle.value)
+    const cleanCatName = sanitizeFilename(cat.nombre)
+    const formatSuffix = selectedFormat.value === 'tv'
+      ? 'TV-16x9'
+      : selectedFormat.value === 'social'
+        ? 'Redes-1x1'
+        : 'WhatsApp-9x16'
+
+    const styleSuffix = sanitizeFilename(currentStyle.value.name)
+    const filename = `Flyer-Las-Delicias-${cleanCatName}-${formatSuffix}-${styleSuffix}.png`
+
+    const dataUrl = canvas.toDataURL('image/png')
+    const link = document.createElement('a')
+    link.setAttribute('download', filename)
+    link.href = dataUrl
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (err) {
+    console.error('Error downloading flyer:', err)
+  } finally {
+    downloadingCatId.value = null
+  }
+}
+
+// Re-generate preview whenever any layout or content parameter changes
+watch([
+  selectedCategoryId,
+  selectedFormat,
+  selectedAiStyleId,
+  showDescriptionsInFlyer,
+  showPricesInFlyer,
+  selectedLogoPosition,
+  selectedFontTheme,
+  selectedFrameStyle
+], () => {
+  generatePreview()
+})
+
+onMounted(async () => {
+  if (categories.value.length > 0) {
+    selectedCategoryId.value = categories.value[0].id
+    await generatePreview()
+  }
+})
+</script>
+
+<template>
+  <div class="space-y-4">
+    <!-- Header: Compact Bar with Slogan and Direct AI Randomizer Button -->
+    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+          <SparklesIcon class="w-5 h-5 text-brand-primary" />
+          <span>Generador de Flyers & Diseños del Día</span>
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Diseños adaptados para WhatsApp, Redes y TV sin alterar los datos del menú.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-brand-primary bg-orange-50 px-3 py-1.5 rounded-xl border border-orange-200">
+          <span>{{ activeSlogan }}</span>
+        </div>
+
+        <button
+          type="button"
+          @click="generateNovelDesignVariation"
+          class="btn btn-sm bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-700 text-white border-none rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
+        >
+          <SparklesIcon class="w-4 h-4 text-amber-300 animate-spin" />
+          <span>✨ Nuevo Diseño del Día (IA)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- AI Notification Toast -->
+    <transition name="fade">
+      <div
+        v-if="aiGenerationToast"
+        class="px-4 py-2.5 rounded-xl bg-purple-900 text-purple-100 text-xs flex items-center justify-between shadow-md border border-purple-700"
+      >
+        <div class="flex items-center gap-2">
+          <SparklesIcon class="w-4 h-4 text-amber-300" />
+          <span><strong>Diseño Aplicado:</strong> {{ aiGenerationToast }}</span>
+        </div>
+        <span class="text-[10px] bg-purple-800 px-2 py-0.5 rounded-full text-purple-200 font-mono">Listo</span>
+      </div>
+    </transition>
+
+    <!-- Mobile View Switcher (Only on screens < lg) -->
+    <div class="lg:hidden bg-slate-100 p-1 rounded-2xl flex items-center gap-1 shadow-2xs">
+      <button
+        type="button"
+        @click="activeMobileTab = 'preview'"
+        class="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px]"
+        :class="activeMobileTab === 'preview' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+      >
+        <EyeIcon class="w-4 h-4 text-brand-primary" />
+        <span>👁️ Ver Flyer</span>
+        <span class="text-[10px] px-1.5 py-0.5 rounded bg-brand-primary/10 text-brand-primary uppercase font-mono">
+          {{ formatOptions.find(f => f.id === selectedFormat)?.name.split(' ')[0] }}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        @click="activeMobileTab = 'controls'"
+        class="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px]"
+        :class="activeMobileTab === 'controls' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+      >
+        <AdjustmentsHorizontalIcon class="w-4 h-4 text-purple-600" />
+        <span>⚙️ Ajustes & Estilo</span>
+      </button>
+    </div>
+
+    <!-- MAIN TWO-COLUMN RESPONSIVE LAYOUT -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      
+      <!-- ============================================== -->
+      <!-- LEFT COLUMN: COMPACT ACCORDION CONTROLS        -->
+      <!-- ============================================== -->
+      <div
+        class="lg:col-span-5 space-y-3.5"
+        :class="activeMobileTab === 'controls' ? 'block' : 'hidden lg:block'"
+      >
+
+        <!-- ACCORDION 1: FORMAT & CARTA SELECTION -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+          <button
+            type="button"
+            @click="toggleAccordion('format')"
+            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer"
+          >
+            <div class="flex items-center gap-2 text-left">
+              <span class="w-6 h-6 rounded-lg bg-orange-100 text-brand-primary flex items-center justify-center text-xs font-bold">1</span>
+              <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Formato y Carta</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                {{ formatOptions.find(f => f.id === selectedFormat)?.name.split(' ')[0] }} • {{ currentCategory?.nombre }}
+              </span>
+              <component :is="accordions.format ? ChevronUpIcon : ChevronDownIcon" class="w-4 h-4 text-slate-400" />
+            </div>
+          </button>
+
+          <div v-show="accordions.format" class="p-4 space-y-3">
+            <!-- Format selector buttons -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Medio / Resolución:</label>
+              <div class="grid grid-cols-3 gap-2">
+                <button
+                  v-for="opt in formatOptions"
+                  :key="opt.id"
+                  type="button"
+                  @click="selectedFormat = opt.id"
+                  class="p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer min-h-[52px]"
+                  :class="selectedFormat === opt.id ? 'bg-orange-50/80 border-brand-primary ring-2 ring-brand-primary/10 shadow-2xs' : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100'"
+                >
+                  <component
+                    :is="opt.icon"
+                    class="w-5 h-5"
+                    :class="selectedFormat === opt.id ? 'text-brand-primary' : 'text-slate-500'"
+                  />
+                  <span class="text-xs font-bold leading-tight" :class="selectedFormat === opt.id ? 'text-brand-primary' : 'text-slate-700'">
+                    {{ opt.id === 'whatsapp' ? 'WhatsApp' : opt.id === 'social' ? 'Redes 1:1' : 'TV 16:9' }}
+                  </span>
+                  <span class="text-[9px] font-mono text-slate-400 font-semibold">
+                    {{ opt.id === 'whatsapp' ? '9:16' : opt.id === 'social' ? '1:1' : '16:9' }}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Category selector pills -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Carta para el flyer:</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  v-for="cat in mainCartas"
+                  :key="cat.id"
+                  type="button"
+                  @click="selectedCategoryId = cat.id"
+                  class="p-2 rounded-xl border text-left transition-all flex items-center gap-2 cursor-pointer"
+                  :class="selectedCategoryId === cat.id ? 'bg-slate-900 text-white border-slate-900 shadow-2xs font-bold' : 'bg-slate-50/60 text-slate-700 border-slate-200 hover:bg-slate-100'"
+                >
+                  <component
+                    :is="getCategoryIcon(cat.nombre, cat.siempre_disponible)"
+                    class="w-4 h-4 shrink-0"
+                    :class="selectedCategoryId === cat.id ? 'text-amber-300' : 'text-brand-primary'"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <div class="text-xs font-bold truncate">{{ cat.nombre }}</div>
+                    <div class="text-[10px] opacity-75 font-normal">
+                      {{ products.filter(p => p.categoria_id === cat.id && p.disponible).length }} platos
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACCORDION 2: PRICES & CONTENT VISIBILITY (Key User Request) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+          <button
+            type="button"
+            @click="toggleAccordion('content')"
+            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer"
+          >
+            <div class="flex items-center gap-2 text-left">
+              <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">2</span>
+              <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Precios y Contenido</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span
+                class="text-[10px] font-bold px-2 py-0.5 rounded"
+                :class="showPricesInFlyer ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'"
+              >
+                {{ showPricesInFlyer ? '💰 Precios Visibles' : 'Precios Ocultos' }}
+              </span>
+              <component :is="accordions.content ? ChevronUpIcon : ChevronDownIcon" class="w-4 h-4 text-slate-400" />
+            </div>
+          </button>
+
+          <div v-show="accordions.content" class="p-4 space-y-3">
+            <!-- Show/Hide Prices Main Toggle (Requested Requirement) -->
+            <label class="flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer"
+              :class="showPricesInFlyer ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200' : 'bg-slate-50 border-slate-200'"
+            >
+              <div class="flex items-start gap-2.5 mr-2">
+                <TagIcon class="w-5 h-5 shrink-0 mt-0.5" :class="showPricesInFlyer ? 'text-emerald-600' : 'text-slate-400'" />
+                <div>
+                  <div class="text-xs font-bold text-slate-900">Mostrar precios en el flyer</div>
+                  <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                    {{ showPricesInFlyer
+                      ? 'Los precios y líneas guía se muestran con alineación perfecta.'
+                      : 'Oculta precios y líneas guía. Los nombres se expanden limpiamente sin huecos vacíos.' }}
+                  </p>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                v-model="showPricesInFlyer"
+                class="toggle toggle-md toggle-success shrink-0"
+              />
+            </label>
+
+            <!-- Show/Hide Descriptions Toggle -->
+            <label class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/80 transition-all cursor-pointer">
+              <div class="flex items-start gap-2.5 mr-2">
+                <DocumentTextIcon class="w-5 h-5 shrink-0 mt-0.5 text-brand-primary" />
+                <div>
+                  <div class="text-xs font-bold text-slate-900">Ver descripción de platos</div>
+                  <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                    Muestra ingredientes o detalles breves debajo de cada plato si el espacio lo permite.
+                  </p>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                v-model="showDescriptionsInFlyer"
+                class="toggle toggle-sm toggle-primary shrink-0"
+              />
+            </label>
+
+            <!-- Local Address Badge -->
+            <div class="flex items-center gap-2 text-xs text-slate-600 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200">
+              <MapPinIcon class="w-4 h-4 text-brand-primary shrink-0" />
+              <div class="text-[11px]">
+                Dirección en el pie: <strong class="text-slate-800">{{ businessAddress }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACCORDION 3: NOVEL AI DESIGN ENGINE (Logo, Fonts, Frame & Palettes) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+          <button
+            type="button"
+            @click="toggleAccordion('style')"
+            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer"
+          >
+            <div class="flex items-center gap-2 text-left">
+              <span class="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">3</span>
+              <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Estilo del Día & IA</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800">
+                {{ currentStyle.name.split(' ')[0] }}
+              </span>
+              <component :is="accordions.style ? ChevronUpIcon : ChevronDownIcon" class="w-4 h-4 text-slate-400" />
+            </div>
+          </button>
+
+          <div v-show="accordions.style" class="p-4 space-y-3.5">
+            <!-- Randomizer Button -->
+            <button
+              type="button"
+              @click="generateNovelDesignVariation"
+              class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer min-h-[44px]"
+            >
+              <SparklesIcon class="w-4 h-4 text-amber-300 animate-spin" />
+              <span>Generar Nuevo Diseño Aleatorio (IA)</span>
+            </button>
+
+            <!-- Logo Position Selector -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Posición del Logo:</label>
+              <div class="grid grid-cols-4 gap-1.5">
+                <button
+                  type="button"
+                  v-for="pos in (['center', 'left', 'right', 'badge'] as LogoPosition[])"
+                  :key="pos"
+                  @click="selectedLogoPosition = pos"
+                  class="py-1.5 px-1 rounded-lg text-xs font-medium text-center transition-all cursor-pointer"
+                  :class="selectedLogoPosition === pos ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                >
+                  {{ pos === 'center' ? 'Centro' : pos === 'left' ? 'Izq.' : pos === 'right' ? 'Der.' : 'Badge' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Typography Theme Selector -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Familia Tipográfica:</label>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  @click="selectedFontTheme = 'serif'"
+                  class="py-1.5 px-2 rounded-lg text-xs font-serif text-center transition-all cursor-pointer"
+                  :class="selectedFontTheme === 'serif' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                >
+                  Playfair Serif
+                </button>
+                <button
+                  type="button"
+                  @click="selectedFontTheme = 'sans'"
+                  class="py-1.5 px-2 rounded-lg text-xs font-sans text-center transition-all cursor-pointer"
+                  :class="selectedFontTheme === 'sans' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                >
+                  Outfit Sans
+                </button>
+                <button
+                  type="button"
+                  @click="selectedFontTheme = 'condensed'"
+                  class="py-1.5 px-2 rounded-lg text-xs font-medium text-center transition-all cursor-pointer"
+                  :class="selectedFontTheme === 'condensed' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                >
+                  Bistró Impact
+                </button>
+                <button
+                  type="button"
+                  @click="selectedFontTheme = 'editorial'"
+                  class="py-1.5 px-2 rounded-lg text-xs font-serif text-center transition-all cursor-pointer"
+                  :class="selectedFontTheme === 'editorial' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                >
+                  Editorial
+                </button>
+              </div>
+            </div>
+
+            <!-- Frame Style Selector -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Estilo de Marco:</label>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  v-for="fr in ([
+                    { id: 'double', label: 'Doble Clásico' },
+                    { id: 'modern_cards', label: 'Tarjetas' },
+                    { id: 'minimal_lines', label: 'Minimal' },
+                    { id: 'ornamental', label: 'Ornamental' }
+                  ] as { id: FrameStyle; label: string }[])"
+                  :key="fr.id"
+                  @click="selectedFrameStyle = fr.id"
+                  class="py-1.5 px-2 rounded-lg text-xs font-medium text-center transition-all cursor-pointer"
+                  :class="selectedFrameStyle === fr.id ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                >
+                  {{ fr.label }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Color Palette Selector -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1.5">Paletas de Colores:</label>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  v-for="st in aiStyles"
+                  :key="st.id"
+                  type="button"
+                  @click="selectedAiStyleId = st.id"
+                  class="p-2 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer"
+                  :class="selectedAiStyleId === st.id ? 'border-purple-600 ring-2 ring-purple-100 bg-purple-50/40 shadow-xs' : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'"
+                >
+                  <div class="min-w-0 pr-2">
+                    <div class="text-[11px] font-bold text-slate-900 truncate">{{ st.name }}</div>
+                    <span class="text-[9px] uppercase px-1 py-0.2 rounded" :class="st.isDark ? 'bg-slate-900 text-amber-300 font-bold' : 'bg-orange-100 text-orange-800'">
+                      {{ st.badge }}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-1 shrink-0">
+                    <span class="w-3 h-3 rounded-full border border-slate-300" :style="{ backgroundColor: st.bgGrad[1] }"></span>
+                    <span class="w-3 h-3 rounded-full border border-slate-300" :style="{ backgroundColor: st.innerBorder }"></span>
+                    <span class="w-3 h-3 rounded-full border border-slate-300" :style="{ backgroundColor: st.priceColor }"></span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACCORDION 4: DIRECT DOWNLOADS PER MEAL (Desayuno, Almuerzo, Cena, Bar) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+          <button
+            type="button"
+            @click="toggleAccordion('downloads')"
+            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer"
+          >
+            <div class="flex items-center gap-2 text-left">
+              <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">4</span>
+              <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Descargas Rápidas</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono text-slate-500">{{ mainCartas.length }} Cartas</span>
+              <component :is="accordions.downloads ? ChevronUpIcon : ChevronDownIcon" class="w-4 h-4 text-slate-400" />
+            </div>
+          </button>
+
+          <div v-show="accordions.downloads" class="p-3 space-y-2">
+            <div
+              v-for="cat in mainCartas"
+              :key="cat.id"
+              class="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/70 transition-colors"
+            >
+              <div class="flex items-center gap-2 min-w-0 mr-2">
+                <component :is="getCategoryIcon(cat.nombre, cat.siempre_disponible)" class="w-4 h-4 text-brand-primary shrink-0" />
+                <div class="truncate">
+                  <span class="text-xs font-bold text-slate-900 block">{{ cat.nombre }}</span>
+                  <span class="text-[10px] text-slate-500">
+                    {{ products.filter(p => p.categoria_id === cat.id && p.disponible).length }} platos
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                @click="downloadFlyerForCategory(cat)"
+                :disabled="downloadingCatId === cat.id"
+                class="btn btn-xs bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center gap-1 shrink-0 cursor-pointer min-h-[36px]"
+              >
+                <ArrowDownTrayIcon class="w-3.5 h-3.5" />
+                <span>{{ downloadingCatId === cat.id ? '...' : 'Descargar' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile-Only Jump to Preview Button -->
+        <div class="lg:hidden pt-2">
+          <button
+            type="button"
+            @click="activeMobileTab = 'preview'"
+            class="btn btn-primary w-full rounded-2xl flex items-center justify-center gap-2 text-sm shadow-md min-h-[48px]"
+          >
+            <EyeIcon class="w-5 h-5" />
+            <span>Ver Resultado en el Flyer</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- RIGHT COLUMN: STICKY LIVE PREVIEW & DOWNLOAD   -->
+      <!-- ============================================== -->
+      <div
+        class="lg:col-span-7 sticky top-4 space-y-3"
+        :class="activeMobileTab === 'preview' ? 'block' : 'hidden lg:block'"
+      >
+        <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3.5">
+          
+          <!-- Category Quick-Pills bar directly on top of preview -->
+          <div class="flex items-center justify-between gap-2 overflow-x-auto pb-1">
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button
+                v-for="cat in mainCartas"
+                :key="cat.id"
+                type="button"
+                @click="selectedCategoryId = cat.id"
+                class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+                :class="selectedCategoryId === cat.id ? 'bg-brand-primary text-white shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+              >
+                <component :is="getCategoryIcon(cat.nombre, cat.siempre_disponible)" class="w-3.5 h-3.5" />
+                <span>{{ cat.nombre }}</span>
+              </button>
+            </div>
+
+            <!-- Instant Price Toggle in Preview Header -->
+            <button
+              type="button"
+              @click="showPricesInFlyer = !showPricesInFlyer"
+              class="px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 shrink-0 border cursor-pointer min-h-[38px]"
+              :class="showPricesInFlyer ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-200'"
+              title="Cambiar visibilidad de precios"
+            >
+              <TagIcon class="w-3.5 h-3.5" />
+              <span>{{ showPricesInFlyer ? '💰 Con Precios' : 'Sin Precios' }}</span>
+            </button>
+          </div>
+
+          <!-- Format & Style Metadata Badges -->
+          <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 pb-2 border-b border-slate-100">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="font-bold text-slate-800">
+                {{ currentCategory?.nombre }}
+              </span>
+              <span class="badge badge-sm bg-slate-100 text-slate-700 font-mono text-[10px]">
+                {{ formatOptions.find(f => f.id === selectedFormat)?.name }} ({{ formatOptions.find(f => f.id === selectedFormat)?.ratioText.split(' ')[1] }})
+              </span>
+              <span class="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                <SparklesIcon class="w-3 h-3 text-purple-600" />
+                <span>{{ currentStyle.name }}</span>
+              </span>
+              <span class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
+                Logo: {{ selectedLogoPosition }}
+              </span>
+            </div>
+
+            <!-- Format quick chips -->
+            <div class="flex items-center gap-1">
+              <button
+                v-for="opt in formatOptions"
+                :key="opt.id"
+                type="button"
+                @click="selectedFormat = opt.id"
+                class="px-2 py-0.5 rounded text-[10px] font-bold transition-all"
+                :class="selectedFormat === opt.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+              >
+                {{ opt.id === 'whatsapp' ? '9:16' : opt.id === 'social' ? '1:1' : '16:9' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Direct Prominent Download Action Button -->
+          <button
+            type="button"
+            v-if="currentCategory"
+            @click="downloadFlyerForCategory(currentCategory)"
+            :disabled="downloadingCatId === currentCategory?.id"
+            class="btn w-full bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center gap-2 shadow-md cursor-pointer min-h-[46px] text-sm font-bold"
+          >
+            <ArrowDownTrayIcon class="w-5 h-5 text-amber-300" />
+            <span>{{ downloadingCatId === currentCategory?.id ? 'Generando imagen...' : `Descargar Flyer de ${currentCategory?.nombre} (${formatOptions.find(f => f.id === selectedFormat)?.name})` }}</span>
+          </button>
+
+          <!-- Flyer Canvas Display Stage -->
+          <div class="flex justify-center items-center bg-slate-900/5 p-3 sm:p-6 rounded-2xl border border-slate-200/90 min-h-[380px] overflow-hidden">
+            <div v-if="isGenerating" class="flex flex-col items-center gap-3 text-slate-500 py-16">
+              <span class="loading loading-spinner loading-lg text-brand-primary"></span>
+              <p class="text-xs font-medium">Generando composición con IA...</p>
+            </div>
+
+            <div v-else-if="flyerPreviewUrl" class="w-full flex justify-center">
+              <img
+                :src="flyerPreviewUrl"
+                :alt="`Flyer ${currentCategory?.nombre}`"
+                class="rounded-xl shadow-xl max-h-[620px] w-auto max-w-full object-contain border border-slate-300/80 transition-all duration-300"
+              />
+            </div>
+
+            <div v-else class="text-center py-12 text-slate-400">
+              <PhotoIcon class="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p class="text-xs">Selecciona una carta para previsualizar el diseño.</p>
+            </div>
+          </div>
+
+          <!-- Mobile Jump to Settings -->
+          <div class="lg:hidden pt-1">
+            <button
+              type="button"
+              @click="activeMobileTab = 'controls'"
+              class="btn btn-outline btn-sm w-full rounded-xl flex items-center justify-center gap-1.5 text-xs text-slate-700 min-h-[44px]"
+            >
+              <AdjustmentsHorizontalIcon class="w-4 h-4 text-purple-600" />
+              <span>Personalizar Logo, Letras y Paleta de Colores</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</template>
