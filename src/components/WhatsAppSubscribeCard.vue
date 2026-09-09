@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useMenuStore } from '@/composables/useMenuStore'
 import {
   ChatBubbleLeftRightIcon,
@@ -17,15 +17,30 @@ withDefaults(defineProps<{
 const { config } = useMenuStore()
 const errorMessage = ref<string | null>(null)
 const isDismissed = ref(false)
+let timerId: ReturnType<typeof setTimeout> | null = null
 
-// Check if user already dismissed it in this session
-try {
-  if (sessionStorage.getItem('wa_badge_dismissed') === '1') {
-    isDismissed.value = true
+// Limpiar flags persistidos anteriormente para asegurar que siempre esté presente
+function clearLegacyDismissal() {
+  try {
+    sessionStorage.removeItem('wa_badge_dismissed')
+    localStorage.removeItem('wa_badge_dismissed')
+  } catch {
+    // ignore
   }
-} catch {
-  // ignore storage error
 }
+
+clearLegacyDismissal()
+
+onMounted(() => {
+  clearLegacyDismissal()
+})
+
+onUnmounted(() => {
+  if (timerId) {
+    clearTimeout(timerId)
+    timerId = null
+  }
+})
 
 // Obtener el enlace efectivo del grupo de WhatsApp
 function resolveWhatsAppTarget(): string | null {
@@ -65,16 +80,19 @@ function handleJoinGroup() {
 
 function dismiss() {
   isDismissed.value = true
-  try {
-    sessionStorage.setItem('wa_badge_dismissed', '1')
-  } catch {
-    // ignore
+  if (timerId) {
+    clearTimeout(timerId)
   }
+  // Vuelve a aparecer automáticamente después de 10 segundos como estaba
+  timerId = setTimeout(() => {
+    isDismissed.value = false
+    timerId = null
+  }, 10000)
 }
 </script>
 
 <template>
-  <!-- Renderizar solo si la función está habilitada en la configuración -->
+  <!-- Renderizar el banner de WhatsApp siempre que no esté cerrado temporalmente -->
   <transition name="wa-slide">
     <section
       v-if="config.whatsapp_subscription_enabled !== false && !isDismissed"
@@ -86,18 +104,15 @@ function dismiss() {
         <div class="absolute -top-6 -right-6 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
         <div class="absolute -bottom-4 -left-4 w-24 h-24 bg-emerald-400/10 rounded-full blur-xl pointer-events-none"></div>
 
-        <!-- Close button con área táctil cómoda en móvil (mínimo 44px) -->
+        <!-- Close button con área táctil y clic óptimo en móvil y web -->
         <button
           type="button"
           @click.stop.prevent="dismiss"
-          @touchend.stop.prevent="dismiss"
-          class="absolute top-2 right-2 p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 active:bg-white/20 transition-all cursor-pointer z-30 touch-manipulation"
+          class="absolute top-2.5 right-2.5 w-9 h-9 rounded-full flex items-center justify-center text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 active:scale-90 transition-all cursor-pointer z-30 touch-manipulation shadow-sm"
           aria-label="Cerrar aviso de WhatsApp"
-          title="Cerrar"
+          title="Cerrar (volverá en 10 segundos)"
         >
-          <div class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center pointer-events-none">
-            <XMarkIcon class="w-4 h-4" />
-          </div>
+          <XMarkIcon class="w-4 h-4 pointer-events-none" />
         </button>
 
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
@@ -106,7 +121,7 @@ function dismiss() {
             <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/25 border border-emerald-400/40 flex items-center justify-center shrink-0 text-emerald-400 mt-0.5 shadow-inner">
               <ChatBubbleLeftRightIcon class="w-6 h-6" />
             </div>
-            <div class="space-y-1 pr-6 sm:pr-0">
+            <div class="space-y-1 pr-7 sm:pr-0">
               <h3 class="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
                 <span>📲 ¡Únete a nuestro grupo de WhatsApp!</span>
               </h3>
