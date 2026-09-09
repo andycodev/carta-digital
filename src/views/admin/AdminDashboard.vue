@@ -273,7 +273,7 @@ const activeShiftsCount = computed(() => categories.value.filter(c => c.activo).
         </div>
       </div>
 
-      <!-- Bloque 3: Escaneos de Códigos QR del Salón y Mesas -->
+      <!-- Bloque 3: Escaneos de Códigos QR de las Cartas Públicas -->
       <div class="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div class="flex items-center gap-3">
@@ -281,9 +281,9 @@ const activeShiftsCount = computed(() => categories.value.filter(c => c.activo).
               <QrCodeIcon class="w-5 h-5" />
             </div>
             <div>
-              <h4 class="font-bold text-slate-900 text-sm">Escaneos de Códigos QR en el Salón y Mesas</h4>
+              <h4 class="font-bold text-slate-900 text-sm">Escaneos de Códigos QR de las Cartas Públicas</h4>
               <p class="text-[11px] text-slate-500">
-                Personas que usaron la cámara de su celular para abrir la carta digital en el restaurante
+                Personas que usaron la cámara de su celular para abrir las cartas digitales públicas
               </p>
             </div>
           </div>
@@ -306,7 +306,7 @@ const activeShiftsCount = computed(() => categories.value.filter(c => c.activo).
             </div>
             <p class="text-2xl font-black text-slate-900">{{ qrMetrics.totalScans }}</p>
             <p class="text-[11px] text-slate-500 mt-1">
-              Lecturas presenciales de códigos QR registradas en el local.
+              Lecturas presenciales de códigos QR registradas en las cartas públicas.
             </p>
           </div>
 
@@ -322,32 +322,32 @@ const activeShiftsCount = computed(() => categories.value.filter(c => c.activo).
             </p>
           </div>
 
-          <!-- Mesa con Más Visitas -->
+          <!-- Carta Más Consultada por QR -->
           <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
             <div class="flex items-center justify-between text-slate-500 mb-1">
-              <span class="text-xs font-semibold text-slate-700">Ubicación con Más Lecturas</span>
-              <BuildingStorefrontIcon class="w-4 h-4 text-amber-500" />
+              <span class="text-xs font-semibold text-slate-700">Carta Más Escaneada</span>
+              <SparklesIcon class="w-4 h-4 text-amber-500" />
             </div>
             <p class="text-lg font-black text-slate-900 truncate">
-              {{ qrMetrics.topTable ? qrMetrics.topTable.name : 'Código QR General' }}
+              {{ qrMetrics.scansBar > qrMetrics.scansRestaurant ? 'Carta del Bar' : 'Carta Principal' }}
             </p>
             <p class="text-[11px] text-slate-500 mt-1">
-              {{ qrMetrics.topTable ? `${qrMetrics.topTable.visits} visitas registradas desde esta mesa.` : 'Afluencia distribuida en el salón.' }}
+              {{ qrMetrics.scansBar > qrMetrics.scansRestaurant ? `${qrMetrics.scansBar} escaneos al Bar` : `${qrMetrics.scansRestaurant} escaneos a Restaurante` }}
             </p>
           </div>
         </div>
 
-        <!-- Desglose de Mesas si existe -->
-        <div v-if="qrMetrics.tableBreakdown.length > 0" class="pt-2 border-t border-slate-100">
-          <p class="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">Detalle de Afluencia por Mesa:</p>
+        <!-- Desglose por Carta Pública -->
+        <div class="pt-2 border-t border-slate-100">
+          <p class="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">Escaneos por Carta Pública:</p>
           <div class="flex flex-wrap gap-2">
-            <div
-              v-for="item in qrMetrics.tableBreakdown"
-              :key="item.name"
-              class="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center gap-2"
-            >
-              <span class="font-medium text-slate-700">{{ item.name }}:</span>
-              <span class="font-bold text-blue-600">{{ item.visits }} {{ item.visits === 1 ? 'visita' : 'visitas' }}</span>
+            <div class="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center gap-2">
+              <span class="font-medium text-slate-700">Carta Principal (Restaurante):</span>
+              <span class="font-bold text-blue-600">{{ qrMetrics.scansRestaurant }} escaneos</span>
+            </div>
+            <div class="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center gap-2">
+              <span class="font-medium text-slate-700">Carta del Bar (Coctelería):</span>
+              <span class="font-bold text-amber-600">{{ qrMetrics.scansBar }} escaneos</span>
             </div>
           </div>
         </div>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useMenuStore } from '@/composables/useMenuStore'
+import { useAuth } from '@/composables/useAuth'
 import logoImg from '@/assets/las-delicias-logo.png'
 import {
   ChartBarIcon,
@@ -14,12 +15,16 @@ import {
   Bars3Icon,
   XMarkIcon,
   ArrowTopRightOnSquareIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  ArrowRightOnRectangleIcon,
+  UserCircleIcon
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
+const router = useRouter()
 const isMobileNavOpen = ref(false)
 const { pendingSubscriptionsCount } = useMenuStore()
+const { user, signOut } = useAuth()
 
 const navLinks = [
   { path: '/admin', name: 'Dashboard', icon: ChartBarIcon, exact: true },
@@ -40,6 +45,11 @@ function isActive(link: { path: string, exact?: boolean }) {
 
 function openPublicMenu() {
   window.open('/', '_blank')
+}
+
+async function handleSignOut() {
+  await signOut()
+  router.push('/login')
 }
 </script>
 
@@ -113,8 +123,27 @@ function openPublicMenu() {
           </nav>
         </div>
 
-        <div class="pt-4 border-t border-slate-100 text-xs text-slate-400">
-          Las Delicias Restobar • Panel v2.0
+        <div class="pt-4 border-t border-slate-100 space-y-3">
+          <div class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
+            <UserCircleIcon class="w-7 h-7 text-slate-400 shrink-0" />
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-bold text-slate-800 truncate">{{ user?.email || 'Administrador' }}</div>
+              <div class="text-[10px] text-emerald-600 font-medium">Sesión Segura</div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            @click="handleSignOut"
+            class="w-full btn btn-sm btn-outline border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <ArrowRightOnRectangleIcon class="w-4 h-4" />
+            <span>Cerrar Sesión</span>
+          </button>
+
+          <div class="text-[10px] text-center text-slate-400">
+            Las Delicias Restobar • Panel v2.0
+          </div>
         </div>
       </div>
     </div>
@@ -154,8 +183,16 @@ function openPublicMenu() {
         </nav>
       </div>
 
-      <!-- Footer Info & Public Menu Button -->
-      <div class="p-4 border-t border-slate-100 space-y-3">
+      <!-- Footer Info & Public Menu Button & Sign Out -->
+      <div class="p-4 border-t border-slate-100 space-y-2.5">
+        <div class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
+          <UserCircleIcon class="w-7 h-7 text-slate-400 shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="text-xs font-bold text-slate-800 truncate" :title="user?.email">{{ user?.email || 'Administrador' }}</div>
+            <div class="text-[10px] text-emerald-600 font-medium">Supabase Auth</div>
+          </div>
+        </div>
+
         <button
           type="button"
           @click="openPublicMenu"
@@ -165,7 +202,16 @@ function openPublicMenu() {
           <span>Ver Carta Pública</span>
         </button>
 
-        <p class="text-[11px] text-center text-slate-400">
+        <button
+          type="button"
+          @click="handleSignOut"
+          class="w-full btn btn-xs btn-ghost text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer py-1.5 transition-colors"
+        >
+          <ArrowRightOnRectangleIcon class="w-3.5 h-3.5" />
+          <span>Cerrar Sesión</span>
+        </button>
+
+        <p class="text-[10px] text-center text-slate-400 pt-1">
           Las Delicias Restobar © {{ new Date().getFullYear() }}
         </p>
       </div>
@@ -185,6 +231,15 @@ function openPublicMenu() {
         </div>
 
         <div class="flex items-center gap-3">
+          <button
+            type="button"
+            @click="handleSignOut"
+            class="btn btn-sm btn-outline border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 flex items-center gap-1.5 rounded-xl text-xs cursor-pointer"
+          >
+            <ArrowRightOnRectangleIcon class="w-4 h-4" />
+            <span>Cerrar Sesión</span>
+          </button>
+
           <router-link
             to="/"
             class="btn btn-sm btn-ghost text-slate-600 hover:text-slate-900 flex items-center gap-1.5 rounded-xl text-xs"

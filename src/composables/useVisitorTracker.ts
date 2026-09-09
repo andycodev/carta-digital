@@ -6,7 +6,7 @@ const STORAGE_KEY_VISITOR_ID = 'delicias_visitor_id_v1'
 const STORAGE_KEY_VISITS = 'delicias_menu_visits_v1'
 const VISIT_COOLDOWN_MS = 3 * 60 * 60 * 1000 // 3 hours cooldown to prevent artificial inflation
 
-// Demo initial visits so metrics look realistic right out of the box in demo mode
+// Demo initial visits for realistic representation of public menu traffic
 function generateInitialDemoVisits(): MenuVisit[] {
   const now = Date.now()
   const oneHour = 3600000
@@ -14,26 +14,26 @@ function generateInitialDemoVisits(): MenuVisit[] {
 
   return [
     // Today
-    { id: 'v-1', menu_type: 'main', visitor_id: 'vis-101', source: 'qr', table_number: '2', visited_at: new Date(now - oneHour * 1).toISOString() },
-    { id: 'v-2', menu_type: 'main', visitor_id: 'vis-102', source: 'direct', table_number: null, visited_at: new Date(now - oneHour * 2).toISOString() },
-    { id: 'v-3', menu_type: 'bar', visitor_id: 'vis-103', source: 'qr', table_number: 'Bar-1', visited_at: new Date(now - oneHour * 1.5).toISOString() },
-    { id: 'v-4', menu_type: 'main', visitor_id: 'vis-104', source: 'whatsapp', table_number: null, visited_at: new Date(now - oneHour * 3).toISOString() },
-    { id: 'v-5', menu_type: 'bar', visitor_id: 'vis-105', source: 'direct', table_number: null, visited_at: new Date(now - oneHour * 0.5).toISOString() },
+    { id: 'v-1', menu_type: 'main', visitor_id: 'vis-101', source: 'qr', visited_at: new Date(now - oneHour * 1).toISOString() },
+    { id: 'v-2', menu_type: 'main', visitor_id: 'vis-102', source: 'direct', visited_at: new Date(now - oneHour * 2).toISOString() },
+    { id: 'v-3', menu_type: 'bar', visitor_id: 'vis-103', source: 'qr', visited_at: new Date(now - oneHour * 1.5).toISOString() },
+    { id: 'v-4', menu_type: 'main', visitor_id: 'vis-104', source: 'whatsapp', visited_at: new Date(now - oneHour * 3).toISOString() },
+    { id: 'v-5', menu_type: 'bar', visitor_id: 'vis-105', source: 'direct', visited_at: new Date(now - oneHour * 0.5).toISOString() },
     // Yesterday
-    { id: 'v-6', menu_type: 'main', visitor_id: 'vis-201', source: 'qr', table_number: '4', visited_at: new Date(now - oneDay * 1).toISOString() },
-    { id: 'v-7', menu_type: 'main', visitor_id: 'vis-202', source: 'qr', table_number: '1', visited_at: new Date(now - oneDay * 1 - oneHour * 3).toISOString() },
-    { id: 'v-8', menu_type: 'bar', visitor_id: 'vis-203', source: 'direct', table_number: null, visited_at: new Date(now - oneDay * 1).toISOString() },
+    { id: 'v-6', menu_type: 'main', visitor_id: 'vis-201', source: 'qr', visited_at: new Date(now - oneDay * 1).toISOString() },
+    { id: 'v-7', menu_type: 'main', visitor_id: 'vis-202', source: 'qr', visited_at: new Date(now - oneDay * 1 - oneHour * 3).toISOString() },
+    { id: 'v-8', menu_type: 'bar', visitor_id: 'vis-203', source: 'direct', visited_at: new Date(now - oneDay * 1).toISOString() },
     // Last 7 days
-    { id: 'v-9', menu_type: 'main', visitor_id: 'vis-301', source: 'qr', table_number: '5', visited_at: new Date(now - oneDay * 3).toISOString() },
-    { id: 'v-10', menu_type: 'main', visitor_id: 'vis-302', source: 'direct', table_number: null, visited_at: new Date(now - oneDay * 4).toISOString() },
-    { id: 'v-11', menu_type: 'bar', visitor_id: 'vis-303', source: 'qr', table_number: 'Bar-2', visited_at: new Date(now - oneDay * 4).toISOString() },
-    { id: 'v-12', menu_type: 'main', visitor_id: 'vis-304', source: 'instagram', table_number: null, visited_at: new Date(now - oneDay * 5).toISOString() },
-    { id: 'v-13', menu_type: 'bar', visitor_id: 'vis-305', source: 'qr', table_number: '3', visited_at: new Date(now - oneDay * 6).toISOString() },
+    { id: 'v-9', menu_type: 'main', visitor_id: 'vis-301', source: 'qr', visited_at: new Date(now - oneDay * 3).toISOString() },
+    { id: 'v-10', menu_type: 'main', visitor_id: 'vis-302', source: 'direct', visited_at: new Date(now - oneDay * 4).toISOString() },
+    { id: 'v-11', menu_type: 'bar', visitor_id: 'vis-303', source: 'qr', visited_at: new Date(now - oneDay * 4).toISOString() },
+    { id: 'v-12', menu_type: 'main', visitor_id: 'vis-304', source: 'instagram', visited_at: new Date(now - oneDay * 5).toISOString() },
+    { id: 'v-13', menu_type: 'bar', visitor_id: 'vis-305', source: 'qr', visited_at: new Date(now - oneDay * 6).toISOString() },
     // Last 30 days
-    { id: 'v-14', menu_type: 'main', visitor_id: 'vis-401', source: 'qr', table_number: '1', visited_at: new Date(now - oneDay * 12).toISOString() },
-    { id: 'v-15', menu_type: 'bar', visitor_id: 'vis-402', source: 'direct', table_number: null, visited_at: new Date(now - oneDay * 18).toISOString() },
-    { id: 'v-16', menu_type: 'main', visitor_id: 'vis-403', source: 'qr', table_number: '6', visited_at: new Date(now - oneDay * 22).toISOString() },
-    { id: 'v-17', menu_type: 'main', visitor_id: 'vis-404', source: 'direct', table_number: null, visited_at: new Date(now - oneDay * 25).toISOString() }
+    { id: 'v-14', menu_type: 'main', visitor_id: 'vis-401', source: 'qr', visited_at: new Date(now - oneDay * 12).toISOString() },
+    { id: 'v-15', menu_type: 'bar', visitor_id: 'vis-402', source: 'direct', visited_at: new Date(now - oneDay * 18).toISOString() },
+    { id: 'v-16', menu_type: 'main', visitor_id: 'vis-403', source: 'qr', visited_at: new Date(now - oneDay * 22).toISOString() },
+    { id: 'v-17', menu_type: 'main', visitor_id: 'vis-404', source: 'direct', visited_at: new Date(now - oneDay * 25).toISOString() }
   ]
 }
 
@@ -58,24 +58,27 @@ export function useVisitorTracker() {
       try {
         localStorage.setItem(STORAGE_KEY_VISITOR_ID, vid)
       } catch (e) {
-        console.warn('Storage disabled:', e)
+        console.warn('Could not save visitor ID:', e)
       }
     }
     return vid
   }
 
-  // Track visit with duplicate prevention
+  // Track visit to a public menu with anti-inflation cooldown window
   async function trackVisit(
     menuType: 'main' | 'bar',
-    queryParams?: Record<string, any>
+    queryParams?: Record<string, string | (string | null)[] | null | undefined>
   ) {
-    const lastVisitKey = `delicias_last_visit_${menuType}`
-    const lastVisitTime = Number(localStorage.getItem(lastVisitKey) || 0)
     const now = Date.now()
+    const lastVisitKey = `delicias_last_visit_${menuType}`
+    const lastVisit = localStorage.getItem(lastVisitKey)
 
-    // If visited this same menu within the cooldown window, do not artificially inflate
-    if (now - lastVisitTime < VISIT_COOLDOWN_MS) {
-      return
+    // Cooldown check (3 hours) to prevent artificial inflating on page reload
+    if (lastVisit) {
+      const elapsed = now - parseInt(lastVisit, 10)
+      if (elapsed < VISIT_COOLDOWN_MS) {
+        return
+      }
     }
 
     localStorage.setItem(lastVisitKey, now.toString())
@@ -83,20 +86,9 @@ export function useVisitorTracker() {
 
     // Determine traffic source
     let source = 'direct'
-    let tableNumber: string | null = null
 
-    if (queryParams) {
-      if (queryParams.table) {
-        tableNumber = String(queryParams.table)
-        source = 'qr'
-      } else if (queryParams.mesa) {
-        tableNumber = String(queryParams.mesa)
-        source = 'qr'
-      }
-
-      if (queryParams.source) {
-        source = String(queryParams.source)
-      }
+    if (queryParams && queryParams.source) {
+      source = String(queryParams.source)
     }
 
     const newVisit: MenuVisit = {
@@ -104,7 +96,6 @@ export function useVisitorTracker() {
       menu_type: menuType,
       visitor_id: visitorId,
       source,
-      table_number: tableNumber,
       visited_at: new Date().toISOString()
     }
 
@@ -121,11 +112,10 @@ export function useVisitorTracker() {
         await supabase.from('menu_visits').insert([{
           menu_type: newVisit.menu_type,
           visitor_id: newVisit.visitor_id,
-          source: newVisit.source,
-          table_number: newVisit.table_number
+          source: newVisit.source
         }])
       } catch (err) {
-        console.warn('Supabase menu_visits insert error:', err)
+        console.warn('Supabase menu_visits insert note:', err)
       }
     }
   }
@@ -184,19 +174,18 @@ export function useVisitorTracker() {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
 
     let todayScans = 0
-    const tableCounts: Record<string, number> = {}
+    let scansRestaurant = 0
+    let scansBar = 0
 
     for (const v of qrVisits) {
       if (new Date(v.visited_at).getTime() >= todayStart) todayScans++
-      const table = v.table_number ? `Mesa ${v.table_number}` : 'Código QR General del Salón'
-      tableCounts[table] = (tableCounts[table] || 0) + 1
+      if (v.menu_type === 'bar') {
+        scansBar++
+      } else {
+        scansRestaurant++
+      }
     }
 
-    const tableBreakdown = Object.entries(tableCounts)
-      .map(([name, visits]) => ({ name, visits }))
-      .sort((a, b) => b.visits - a.visits)
-
-    const topTable = tableBreakdown.length > 0 ? tableBreakdown[0] : null
     const directVisits = allVisits.value.filter(v => (v.source || '').toLowerCase().includes('direct')).length
     const socialVisits = allVisits.value.filter(v => {
       const s = (v.source || '').toLowerCase()
@@ -206,8 +195,8 @@ export function useVisitorTracker() {
     return {
       totalScans: qrVisits.length,
       todayScans,
-      tableBreakdown,
-      topTable,
+      scansRestaurant,
+      scansBar,
       directVisits,
       socialVisits
     }

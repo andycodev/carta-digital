@@ -15,6 +15,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const {
+  config,
   whatsappSubscriptions,
   updateWhatsAppSubscriptionStatus,
   deleteWhatsAppSubscription,
@@ -95,13 +96,24 @@ function getStatusBadge(status: WhatsAppSubscriptionStatus) {
   return match || { label: status, color: 'bg-slate-100 text-slate-700 border-slate-200' }
 }
 
-function openWhatsAppChat(phone: string, name: string | null) {
-  const clean = phone.replace(/\D/g, '')
+function openWhatsAppChat(sub: WhatsAppSubscriber) {
+  const clean = sub.phone.replace(/\D/g, '')
   const intlPhone = clean.startsWith('51') ? clean : `51${clean}`
-  const clientName = name ? ` ${name}` : ''
-  const message = encodeURIComponent(
-    `¡Hola${clientName}! Te saludamos de Las Delicias Restobar 🍽️✨. Recibimos tu solicitud para unirte a nuestro grupo de WhatsApp sobre novedades, menús y promociones especiales. ¿Deseas que te enviemos el enlace oficial de invitación?`
-  )
+  const clientGreeting = sub.name ? `Hola ${sub.name.trim()} 👋` : '¡Hola! 👋'
+  const groupLink = config.value.whatsapp_group_url || 'https://chat.whatsapp.com/FLX38a7Z4lC4b6EXAMPLE'
+  
+  const messageText = `${clientGreeting}
+¡Gracias por registrarte!
+Ya puedes unirte directamente a nuestro grupo oficial de WhatsApp:
+
+👉 ${groupLink}`
+
+  const message = encodeURIComponent(messageText)
+
+  if (sub.status === 'pending') {
+    handleStatusChange(sub.id, 'contacted')
+  }
+
   window.open(`https://wa.me/${intlPhone}?text=${message}`, '_blank')
 }
 
@@ -357,7 +369,7 @@ function handleDelete(id: string, phone: string) {
                 <div class="flex items-center justify-end gap-1.5">
                   <button
                     type="button"
-                    @click="openWhatsAppChat(sub.phone, sub.name)"
+                    @click="openWhatsAppChat(sub)"
                     class="btn btn-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1 text-[11px] shadow-2xs cursor-pointer"
                     title="Abrir chat en WhatsApp Web / App"
                   >

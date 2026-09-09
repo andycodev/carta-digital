@@ -21,12 +21,14 @@ const { config, subscribeToWhatsApp } = useMenuStore()
 
 const name = ref('')
 const phone = ref('')
+const consentAccepted = ref(true)
 const isLoading = ref(false)
 const errorMessage = ref<string | null>(null)
 const isSubmitted = ref(false)
 const isDuplicate = ref(false)
 const registeredName = ref('')
 const targetGroupUrl = ref('')
+const whatsappMessageUrl = ref('')
 
 async function handleSubmit() {
   errorMessage.value = null
@@ -34,6 +36,11 @@ async function handleSubmit() {
 
   if (!cleanPhone || cleanPhone.length < 8) {
     errorMessage.value = 'Por favor ingresa un número de celular de al menos 9 dígitos.'
+    return
+  }
+
+  if (!consentAccepted.value) {
+    errorMessage.value = 'Debes aceptar la autorización para recibir novedades.'
     return
   }
 
@@ -48,7 +55,28 @@ async function handleSubmit() {
     registeredName.value = name.value.trim()
     targetGroupUrl.value = res.groupUrl || config.value.whatsapp_group_url || 'https://chat.whatsapp.com/FLX38a7Z4lC4b6EXAMPLE'
     isDuplicate.value = res.alreadyRegistered
+
+    // Build automated message with dynamic group link
+    const clientGreeting = registeredName.value ? `Hola ${registeredName.value} 👋` : '¡Hola! 👋'
+    const groupLink = targetGroupUrl.value
+    const messageText = `${clientGreeting}
+¡Gracias por registrarte!
+Ya puedes unirte directamente a nuestro grupo oficial de WhatsApp:
+
+👉 ${groupLink}`
+
+    const intlPhone = cleanPhone.startsWith('51') ? cleanPhone : `51${cleanPhone}`
+    const sendUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(messageText)}`
+    whatsappMessageUrl.value = sendUrl
+
     isSubmitted.value = true
+
+    // Enviar automáticamente WhatsApp abriendo el chat con el enlace del grupo
+    try {
+      window.open(sendUrl, '_blank')
+    } catch (e) {
+      console.warn('Popup blocked, available on button', e)
+    }
   } catch (err: any) {
     errorMessage.value = err.message || 'Ocurrió un error al procesar tu solicitud.'
   } finally {
@@ -61,12 +89,22 @@ function openGroupLink() {
   window.open(url, '_blank')
 }
 
+function openWhatsAppMessage() {
+  if (whatsappMessageUrl.value) {
+    window.open(whatsappMessageUrl.value, '_blank')
+  } else {
+    openGroupLink()
+  }
+}
+
 function resetForm() {
   name.value = ''
   phone.value = ''
+  consentAccepted.value = true
   isSubmitted.value = false
   isDuplicate.value = false
   errorMessage.value = null
+  whatsappMessageUrl.value = ''
 }
 </script>
 
@@ -108,13 +146,13 @@ function resetForm() {
         </h4>
         <p class="text-xs text-slate-600 leading-relaxed">
           {{ isDuplicate
-            ? 'Este número ya está registrado. Puedes unirte a nuestro grupo de WhatsApp para recibir nuestras novedades.'
-            : 'Ahora únete a nuestro grupo de WhatsApp para recibir promociones, novedades y eventos de Las Delicias Restobar.'
+            ? 'Este número ya está en nuestra lista. Te enviamos directamente el enlace oficial al grupo de WhatsApp.'
+            : 'Tu autorización ha sido guardada. Te enviamos directamente el enlace oficial para unirte al grupo de WhatsApp.'
           }}
         </p>
       </div>
 
-      <!-- Action Button: Open Public Group Invitation Link -->
+      <!-- Action Buttons: Direct Group & Direct Chat with prefilled message -->
       <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
         <button
           type="button"
@@ -124,6 +162,14 @@ function resetForm() {
           <ChatBubbleLeftRightIcon class="w-4 h-4" />
           <span>Unirme al grupo de WhatsApp</span>
           <ArrowTopRightOnSquareIcon class="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          type="button"
+          @click="openWhatsAppMessage"
+          class="btn btn-outline border-emerald-300 text-emerald-800 hover:bg-emerald-100/60 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 w-full sm:w-auto"
+        >
+          <span>Abrir chat de WhatsApp</span>
         </button>
 
         <button
@@ -188,11 +234,24 @@ function resetForm() {
         </div>
       </div>
 
+      <!-- Consent / Authorization Checkbox (Required) -->
+      <label class="flex items-start gap-2.5 pt-1 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          v-model="consentAccepted"
+          required
+          class="checkbox checkbox-xs checkbox-primary mt-0.5"
+        />
+        <span class="text-[11px] text-slate-600 leading-tight">
+          Autorizo a <strong>Las Delicias Restobar</strong> a enviarme automáticamente el enlace del grupo oficial de WhatsApp con novedades y promociones.
+        </span>
+      </label>
+
       <!-- Action Button -->
       <div class="flex items-center justify-between pt-1">
         <div class="inline-flex items-center gap-1 text-[10px] text-slate-400">
           <SparklesIcon class="w-3.5 h-3.5 text-emerald-500" />
-          <span>Acceso libre al grupo de novedades</span>
+          <span>Acceso libre e inmediato al grupo</span>
         </div>
 
         <button
@@ -201,7 +260,7 @@ function resetForm() {
           class="btn btn-sm bg-emerald-600 hover:bg-emerald-700 text-white border-none rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer px-5"
         >
           <span v-if="isLoading" class="loading loading-spinner loading-xs"></span>
-          <span>{{ isLoading ? 'Registrando...' : 'Quiero recibir novedades' }}</span>
+          <span>{{ isLoading ? 'Registrando y enviando...' : 'Quiero recibir novedades' }}</span>
         </button>
       </div>
     </form>

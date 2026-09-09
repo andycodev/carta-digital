@@ -77,7 +77,7 @@ function toggleAudioTest() {
 }
 
 function handleFactoryReset() {
-  if (confirm('¿Deseas restaurar todas las cartas, productos, mesas y configuración a los valores iniciales de Las Delicias Restobar?')) {
+  if (confirm('¿Deseas restaurar todas las cartas, productos y configuración a los valores iniciales de Las Delicias Restobar?')) {
     restoreDefaults()
     alert('Se han restaurado todos los datos a sus valores iniciales.')
   }
@@ -342,7 +342,7 @@ function handleFactoryReset() {
         <div class="bg-white p-5 rounded-2xl border border-red-200 shadow-2xs space-y-2">
           <h3 class="font-bold text-red-700 text-xs uppercase tracking-wider">Zona de Mantenimiento</h3>
           <p class="text-[11px] text-slate-500">
-            Restaura las cartas (Desayuno, Almuerzo, Cena, Bar), productos y mesas de demostración a su estado inicial.
+            Restaura las cartas (Desayuno, Almuerzo, Cena, Bar), productos y configuración de demostración a su estado inicial.
           </p>
           <button
             type="button"

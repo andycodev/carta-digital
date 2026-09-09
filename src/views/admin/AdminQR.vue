@@ -98,116 +98,143 @@ function loadLogo(): Promise<HTMLImageElement> {
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error('Logo could not load'))
     img.src = logoImg
-    if (img.complete && img.naturalWidth > 0) resolve(img)
   })
 }
 
-// Download Branded Table Card for acrylic stand (1200 x 1600 px high quality PNG)
-async function downloadPrintableTableCard() {
-  const canvas = document.createElement('canvas')
-  canvas.width = 1200
-  canvas.height = 1600
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  // 1. Clean Luxury Background
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, 1600)
-  bgGrad.addColorStop(0, '#FFFFFF')
-  bgGrad.addColorStop(1, '#F8FAFC')
-  ctx.fillStyle = bgGrad
-  ctx.fillRect(0, 0, 1200, 1600)
-
-  // Outer border
-  ctx.strokeStyle = '#E2E8F0'
-  ctx.lineWidth = 8
-  ctx.strokeRect(40, 40, 1120, 1520)
-
-  // Inner copper/terracotta frame
-  ctx.strokeStyle = '#C2410C'
-  ctx.lineWidth = 4
-  ctx.strokeRect(60, 60, 1080, 1480)
-
-  // 2. Logo
-  let currentY = 120
+// Generate Printable Card Canvas (1200 x 1800 px) for local display
+async function downloadPrintableDisplayCard() {
   try {
-    const logo = await loadLogo()
-    const logoW = 380
-    const ratio = logo.naturalHeight / (logo.naturalWidth || 1)
-    const logoH = logoW * ratio
-    ctx.drawImage(logo, (1200 - logoW) / 2, currentY, logoW, logoH)
-    currentY += logoH + 40
-  } catch {
-    ctx.fillStyle = '#0F172A'
-    ctx.font = 'bold 50px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('LAS DELICIAS RESTOBAR', 600, currentY + 60)
-    currentY += 120
-  }
+    const publicUrl = getPublicCartaUrl()
+    const isBar = selectedQrTarget.value === 'bar'
 
-  // Slogan
-  ctx.fillStyle = '#C2410C'
-  ctx.font = 'bold 30px sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText(config.value.subtitulo || 'Sabor, música y buenos momentos', 600, currentY)
+    const canvas = document.createElement('canvas')
+    canvas.width = 1200
+    canvas.height = 1800
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
-  currentY += 60
+    // 1. Background (warm premium gradient)
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 1800)
+    bgGrad.addColorStop(0, '#0F172A')
+    bgGrad.addColorStop(0.35, '#1E293B')
+    bgGrad.addColorStop(1, '#090D16')
+    ctx.fillStyle = bgGrad
+    ctx.fillRect(0, 0, 1200, 1800)
 
-  // Title
-  ctx.fillStyle = '#0F172A'
-  ctx.font = 'bold 54px sans-serif'
-  ctx.fillText('CARTA DIGITAL INTERACTIVA', 600, currentY)
+    // 2. Ornamental Borders
+    ctx.strokeStyle = '#D97706'
+    ctx.lineWidth = 4
+    ctx.strokeRect(40, 40, 1120, 1720)
 
-  currentY += 30
+    ctx.strokeStyle = '#F59E0B'
+    ctx.lineWidth = 1.5
+    ctx.strokeRect(55, 55, 1090, 1690)
 
-  // Divider
-  ctx.beginPath()
-  ctx.moveTo(250, currentY)
-  ctx.lineTo(950, currentY)
-  ctx.strokeStyle = '#CBD5E1'
-  ctx.lineWidth = 3
-  ctx.stroke()
-
-  currentY += 50
-
-  // High-Res QR Code in center
-  const publicUrl = getPublicCartaUrl()
-  const qrCanvas = document.createElement('canvas')
-  await QRCode.toCanvas(qrCanvas, publicUrl, {
-    width: 600,
-    margin: 2,
-    color: {
-      dark: '#0F172A',
-      light: '#FFFFFF'
+    // Corner accents
+    for (const [cx, cy] of [[55, 55], [1145, 55], [55, 1745], [1145, 1745]]) {
+      ctx.fillStyle = '#F59E0B'
+      ctx.fillRect(cx - 6, cy - 6, 12, 12)
     }
-  })
 
-  ctx.drawImage(qrCanvas, 300, currentY, 600, 600)
+    // 3. Logo
+    try {
+      const logo = await loadLogo()
+      const logoW = 320
+      const logoH = (logo.naturalHeight / logo.naturalWidth) * logoW
+      ctx.drawImage(logo, (1200 - logoW) / 2, 110, logoW, logoH)
+    } catch {
+      ctx.fillStyle = '#FFFFFF'
+      ctx.font = 'bold 50px "Playfair Display", Georgia, serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('LAS DELICIAS', 600, 190)
+    }
 
-  currentY += 650
+    // 4. Restaurant Titles
+    ctx.textAlign = 'center'
+    ctx.fillStyle = '#F59E0B'
+    ctx.font = 'bold 26px "Inter", sans-serif'
+    ctx.fillText('RESTOBAR & COCTELERÍA', 600, 310)
 
-  // Instruction
-  ctx.fillStyle = '#1E293B'
-  ctx.font = 'bold 36px sans-serif'
-  ctx.fillText('Escanea con la cámara de tu celular', 600, currentY)
+    ctx.fillStyle = '#94A3B8'
+    ctx.font = 'italic 24px "Playfair Display", serif'
+    ctx.fillText(config.value.subtitulo || 'Sabor, música y buenos momentos', 600, 355)
 
-  currentY += 45
-  ctx.fillStyle = '#64748B'
-  ctx.font = '26px sans-serif'
-  ctx.fillText('Consulta los platos, bebidas y precios del día en vivo', 600, currentY)
+    // 5. Card Identifier Banner
+    ctx.fillStyle = isBar ? '#C2410C' : '#D97706'
+    ctx.beginPath()
+    ctx.roundRect(240, 405, 720, 80, 20)
+    ctx.fill()
 
-  currentY += 55
-  ctx.fillStyle = '#C2410C'
-  ctx.font = 'bold 26px monospace'
-  ctx.fillText(publicUrl, 600, currentY)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = '900 36px "Inter", sans-serif'
+    ctx.fillText(isBar ? 'CARTA DE BAR & BEBIDAS' : 'CARTA DIGITAL OFICIAL', 600, 458)
 
-  // Trigger download with direct dataURL
-  const dataUri = canvas.toDataURL('image/png')
-  const link = document.createElement('a')
-  link.setAttribute('download', selectedQrTarget.value === 'bar' ? 'Ficha-QR-Bar-Las-Delicias.png' : 'Ficha-QR-Carta-Las-Delicias.png')
-  link.href = dataUri
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+    // 6. QR Code High-Res
+    const qrImage = await QRCode.toDataURL(publicUrl, {
+      width: 700,
+      margin: 2,
+      color: {
+        dark: '#0F172A',
+        light: '#FFFFFF'
+      }
+    })
+
+    const qrImgEl = new Image()
+    qrImgEl.src = qrImage
+    await new Promise(r => { qrImgEl.onload = r })
+
+    // QR White Container Box
+    ctx.fillStyle = '#FFFFFF'
+    ctx.beginPath()
+    ctx.roundRect(250, 540, 700, 700, 36)
+    ctx.fill()
+    ctx.drawImage(qrImgEl, 275, 565, 650, 650)
+
+    // 7. Scanning instructions
+    ctx.fillStyle = '#F8FAFC'
+    ctx.font = 'bold 44px "Inter", sans-serif'
+    ctx.fillText('ESCANEA CON TU CELULAR', 600, 1330)
+
+    ctx.fillStyle = '#CBD5E1'
+    ctx.font = '26px "Inter", sans-serif'
+    ctx.fillText('Abre la cámara de tu smartphone para ver la carta en vivo', 600, 1380)
+
+    ctx.fillStyle = '#64748B'
+    ctx.font = '22px "Inter", sans-serif'
+    ctx.fillText('Sin necesidad de instalar ninguna aplicación', 600, 1420)
+
+    // 8. Public Link Footer Badge
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.07)'
+    ctx.beginPath()
+    ctx.roundRect(200, 1490, 800, 85, 20)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+    ctx.stroke()
+
+    ctx.fillStyle = '#F59E0B'
+    ctx.font = 'bold 28px monospace'
+    ctx.fillText(publicUrl, 600, 1544)
+
+    // 9. Copyright footer
+    ctx.fillStyle = '#475569'
+    ctx.font = '20px "Inter", sans-serif'
+    ctx.fillText('Las Delicias Restobar • Calle Santa Catalina 14001 - Chongoyape', 600, 1690)
+
+    // Download triggered
+    const dataUrl = canvas.toDataURL('image/png')
+    const link = document.createElement('a')
+    const filename = isBar
+      ? 'Ficha-QR-Bar-Las-Delicias.png'
+      : 'Ficha-QR-Carta-Las-Delicias.png'
+
+    link.setAttribute('download', filename)
+    link.href = dataUrl
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (err) {
+    console.error('Error rendering printable card:', err)
+  }
 }
 
 function printCard() {
@@ -226,7 +253,7 @@ onMounted(() => {
       <div>
         <h2 class="text-lg font-bold text-slate-900">Códigos QR de las Cartas Públicas</h2>
         <p class="text-xs text-slate-500">
-          Descarga los códigos QR oficiales para imprimir en acrílicos de mesa, barras, caja y publicidad.
+          Descarga los códigos QR oficiales para el salón, barras, caja y publicidad del local.
         </p>
       </div>
 
@@ -234,7 +261,7 @@ onMounted(() => {
         <button
           type="button"
           @click="downloadStandaloneQR"
-          class="btn btn-sm bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs flex items-center gap-1.5 shadow-xs"
+          class="btn btn-sm bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
         >
           <ArrowDownTrayIcon class="w-4 h-4" />
           <span>Descargar Imagen QR (.PNG)</span>
@@ -242,8 +269,8 @@ onMounted(() => {
 
         <button
           type="button"
-          @click="downloadPrintableTableCard"
-          class="btn btn-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-none rounded-xl text-xs flex items-center gap-1.5 shadow-xs"
+          @click="downloadPrintableDisplayCard"
+          class="btn btn-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-none rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
         >
           <SparklesIcon class="w-4 h-4" />
           <span>Descargar Ficha Imprimible</span>
@@ -252,7 +279,7 @@ onMounted(() => {
         <button
           type="button"
           @click="printCard"
-          class="btn btn-sm btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white rounded-xl text-xs flex items-center gap-1.5"
+          class="btn btn-sm btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
         >
           <PrinterIcon class="w-4 h-4" />
           <span>Imprimir</span>
@@ -342,7 +369,7 @@ onMounted(() => {
             <button
               type="button"
               @click="copyPublicUrl"
-              class="btn btn-xs rounded-lg flex items-center gap-1 shrink-0 transition-all"
+              class="btn btn-xs rounded-lg flex items-center gap-1 shrink-0 transition-all cursor-pointer"
               :class="isCopied ? 'btn-success text-white' : 'btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white'"
             >
               <component :is="isCopied ? CheckIcon : ClipboardDocumentIcon" class="w-3.5 h-3.5" />
@@ -363,23 +390,23 @@ onMounted(() => {
           <ul class="space-y-3 text-slate-600">
             <li class="flex items-start gap-2.5">
               <span class="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">✓</span>
-              <span><strong>Impresión Unificada:</strong> Puedes imprimir un único diseño de código QR para todas las mesas del local, barra y cajas sin riesgo de confusión.</span>
+              <span><strong>Impresión Unificada:</strong> Puedes imprimir un único diseño de código QR para todo el local, barras, caja y publicidad sin confusiones.</span>
             </li>
             <li class="flex items-start gap-2.5">
               <span class="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">✓</span>
-              <span><strong>Enlace Público Limpio:</strong> Los clientes acceden a la dirección raíz <code class="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded text-slate-800">{{ getPublicCartaUrl() }}</code> sin parámetros visibles que alteren la experiencia.</span>
+              <span><strong>Enlace Público Limpio:</strong> Los clientes acceden a la dirección raíz oficial <code class="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded text-slate-800">{{ getPublicCartaUrl() }}</code> de forma directa, rápida y sin parámetros.</span>
             </li>
             <li class="flex items-start gap-2.5">
               <span class="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">✓</span>
-              <span><strong>Preparado para el Futuro:</strong> Cuando desees implementar pedidos o llamados por mesa individual, el sistema reactivará de forma transparente los identificadores específicos.</span>
+              <span><strong>Actualización en Vivo:</strong> Cualquier cambio en platos, bebidas, horarios o precios se refleja inmediatamente en el menú que el cliente visualiza.</span>
             </li>
           </ul>
 
           <div class="pt-3 border-t border-slate-100 space-y-2">
             <button
               type="button"
-              @click="downloadPrintableTableCard"
-              class="btn btn-sm w-full bg-brand-primary hover:bg-brand-primary-hover text-white border-none rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs"
+              @click="downloadPrintableDisplayCard"
+              class="btn btn-sm w-full bg-brand-primary hover:bg-brand-primary-hover text-white border-none rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
             >
               <ArrowDownTrayIcon class="w-4 h-4" />
               <span>Descargar Ficha Imprimible para Salón / Barra (PNG Alta Calidad)</span>
@@ -387,7 +414,7 @@ onMounted(() => {
             <button
               type="button"
               @click="downloadStandaloneQR"
-              class="btn btn-sm w-full btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white rounded-xl text-xs flex items-center justify-center gap-1.5"
+              class="btn btn-sm w-full btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <QrCodeIcon class="w-4 h-4" />
               <span>Descargar Solo Código QR (PNG 1000x1000)</span>

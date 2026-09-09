@@ -20,15 +20,6 @@ export interface Producto {
   created_at?: string
 }
 
-export interface Mesa {
-  id: string
-  numero: string
-  nombre: string
-  activa: boolean
-  qr_codigo: string
-  created_at: string
-}
-
 export interface AppConfig {
   nombre_negocio: string
   subtitulo: string
@@ -62,7 +53,6 @@ export interface MenuVisit {
   menu_type: 'main' | 'bar'
   visitor_id: string
   source: string
-  table_number?: string | null
   visited_at: string
 }
 

@@ -3,7 +3,6 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient'
 import type {
   Categoria,
   Producto,
-  Mesa,
   AppConfig,
   WhatsAppSubscriber,
   WhatsAppSubscriptionStatus
@@ -11,7 +10,6 @@ import type {
 
 const STORAGE_KEY_CATEGORIES = 'delicias_categories_v2'
 const STORAGE_KEY_PRODUCTS = 'delicias_products_v2'
-const STORAGE_KEY_MESAS = 'delicias_mesas_v2'
 const STORAGE_KEY_CONFIG = 'delicias_config_v2'
 const STORAGE_KEY_WHATSAPP_SUBS = 'delicias_whatsapp_subs_v1'
 
@@ -226,15 +224,6 @@ const DEFAULT_PRODUCTS: Producto[] = [
   }
 ]
 
-const DEFAULT_MESAS: Mesa[] = [
-  { id: 'm-1', numero: '01', nombre: 'Mesa 01', activa: true, qr_codigo: 'mesa-01', created_at: new Date().toISOString() },
-  { id: 'm-2', numero: '02', nombre: 'Mesa 02', activa: true, qr_codigo: 'mesa-02', created_at: new Date().toISOString() },
-  { id: 'm-3', numero: '03', nombre: 'Mesa 03', activa: true, qr_codigo: 'mesa-03', created_at: new Date().toISOString() },
-  { id: 'm-4', numero: '04', nombre: 'Mesa 04', activa: true, qr_codigo: 'mesa-04', created_at: new Date().toISOString() },
-  { id: 'm-5', numero: '05', nombre: 'Mesa 05 (Terraza)', activa: true, qr_codigo: 'mesa-05', created_at: new Date().toISOString() },
-  { id: 'm-6', numero: '06', nombre: 'Mesa 06 (VIP)', activa: true, qr_codigo: 'mesa-06', created_at: new Date().toISOString() }
-]
-
 const DEFAULT_CONFIG: AppConfig = {
   nombre_negocio: 'Las Delicias Restobar',
   subtitulo: 'Sabor, música y buenos momentos',
@@ -261,7 +250,6 @@ function loadInitial<T>(key: string, fallback: T): T {
 
 const categories = ref<Categoria[]>(loadInitial(STORAGE_KEY_CATEGORIES, DEFAULT_CATEGORIES))
 const products = ref<Producto[]>(loadInitial(STORAGE_KEY_PRODUCTS, DEFAULT_PRODUCTS))
-const mesas = ref<Mesa[]>(loadInitial(STORAGE_KEY_MESAS, DEFAULT_MESAS))
 const config = ref<AppConfig>(loadInitial(STORAGE_KEY_CONFIG, DEFAULT_CONFIG))
 const whatsappSubscriptions = ref<WhatsAppSubscriber[]>(loadInitial(STORAGE_KEY_WHATSAPP_SUBS, DEFAULT_WHATSAPP_SUBS))
 
@@ -384,43 +372,6 @@ export function useMenuStore() {
     }
   }
 
-  // --- MESAS & QR ACTIONS ---
-  function addMesa(numero: string, nombre: string) {
-    const slug = `mesa-${numero.toLowerCase().replace(/\s+/g, '-')}`
-    const newMesa: Mesa = {
-      id: `m-${Date.now()}`,
-      numero,
-      nombre,
-      activa: true,
-      qr_codigo: slug,
-      created_at: new Date().toISOString()
-    }
-    mesas.value.push(newMesa)
-    persist(STORAGE_KEY_MESAS, mesas.value)
-    return newMesa
-  }
-
-  function updateMesa(id: string, updates: Partial<Mesa>) {
-    const idx = mesas.value.findIndex(m => m.id === id)
-    if (idx !== -1) {
-      mesas.value[idx] = { ...mesas.value[idx], ...updates }
-      persist(STORAGE_KEY_MESAS, mesas.value)
-    }
-  }
-
-  function deleteMesa(id: string) {
-    mesas.value = mesas.value.filter(m => m.id !== id)
-    persist(STORAGE_KEY_MESAS, mesas.value)
-  }
-
-  function toggleMesaActiva(id: string) {
-    const m = mesas.value.find(mesa => mesa.id === id)
-    if (m) {
-      m.activa = !m.activa
-      persist(STORAGE_KEY_MESAS, mesas.value)
-    }
-  }
-
   // --- CONFIG ACTIONS ---
   function updateConfig(updates: Partial<AppConfig>) {
     config.value = { ...config.value, ...updates }
@@ -431,11 +382,9 @@ export function useMenuStore() {
   function restoreDefaults() {
     categories.value = [...DEFAULT_CATEGORIES]
     products.value = [...DEFAULT_PRODUCTS]
-    mesas.value = [...DEFAULT_MESAS]
     config.value = { ...DEFAULT_CONFIG }
     persist(STORAGE_KEY_CATEGORIES, categories.value)
     persist(STORAGE_KEY_PRODUCTS, products.value)
-    persist(STORAGE_KEY_MESAS, mesas.value)
     persist(STORAGE_KEY_CONFIG, config.value)
     persist(STORAGE_KEY_WHATSAPP_SUBS, whatsappSubscriptions.value)
   }
@@ -566,7 +515,6 @@ export function useMenuStore() {
   // Computed metrics
   const activeProducts = computed(() => products.value.filter(p => p.disponible))
   const unavailableProducts = computed(() => products.value.filter(p => !p.disponible))
-  const activeMesas = computed(() => mesas.value.filter(m => m.activa))
   const pendingSubscriptionsCount = computed(() =>
     whatsappSubscriptions.value.filter(s => s.status === 'pending').length
   )
@@ -574,12 +522,10 @@ export function useMenuStore() {
   return {
     categories,
     products,
-    mesas,
     config,
     whatsappSubscriptions,
     activeProducts,
     unavailableProducts,
-    activeMesas,
     pendingSubscriptionsCount,
     addProduct,
     updateProduct,
@@ -587,10 +533,6 @@ export function useMenuStore() {
     toggleProductAvailability,
     updateCategory,
     toggleCategoryActive,
-    addMesa,
-    updateMesa,
-    deleteMesa,
-    toggleMesaActiva,
     updateConfig,
     restoreDefaults,
     subscribeToWhatsApp,
