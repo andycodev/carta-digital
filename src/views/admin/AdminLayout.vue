@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMenuStore } from '@/composables/useMenuStore'
 import { useAuth } from '@/composables/useAuth'
 import logoImg from '@/assets/las-delicias-logo.png'
 import {
@@ -10,7 +9,6 @@ import {
   ClockIcon,
   QrCodeIcon,
   PhotoIcon,
-  UserGroupIcon,
   Cog6ToothIcon,
   Bars3Icon,
   XMarkIcon,
@@ -23,7 +21,6 @@ import {
 const route = useRoute()
 const router = useRouter()
 const isMobileNavOpen = ref(false)
-const { pendingSubscriptionsCount } = useMenuStore()
 const { user, signOut } = useAuth()
 
 const navLinks = [
@@ -32,7 +29,6 @@ const navLinks = [
   { path: '/admin/cartas', name: 'Cartas y Horarios', icon: ClockIcon },
   { path: '/admin/qr', name: 'Códigos QR de Cartas', icon: QrCodeIcon },
   { path: '/admin/flyers', name: 'Descargar Flyers', icon: PhotoIcon },
-  { path: '/admin/suscriptores', name: 'Suscriptores WhatsApp', icon: UserGroupIcon, badge: true },
   { path: '/admin/configuracion', name: 'Configuración & Música', icon: Cog6ToothIcon }
 ]
 
@@ -113,12 +109,6 @@ async function handleSignOut() {
                 <component :is="item.icon" class="w-5 h-5 shrink-0" />
                 <span>{{ item.name }}</span>
               </div>
-              <span
-                v-if="item.badge && pendingSubscriptionsCount > 0"
-                class="badge badge-xs bg-amber-400 text-slate-950 font-bold px-1.5 py-0.5 rounded-full"
-              >
-                {{ pendingSubscriptionsCount }}
-              </span>
             </router-link>
           </nav>
         </div>
@@ -173,12 +163,6 @@ async function handleSignOut() {
               <component :is="item.icon" class="w-5 h-5 shrink-0" />
               <span>{{ item.name }}</span>
             </div>
-            <span
-              v-if="item.badge && pendingSubscriptionsCount > 0"
-              class="badge badge-xs bg-amber-400 text-slate-950 font-bold px-1.5 py-0.5 rounded-full"
-            >
-              {{ pendingSubscriptionsCount }}
-            </span>
           </router-link>
         </nav>
       </div>

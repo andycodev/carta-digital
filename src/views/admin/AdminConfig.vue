@@ -250,14 +250,14 @@ function handleFactoryReset() {
                 <ChatBubbleLeftRightIcon class="w-4 h-4" />
               </div>
               <div>
-                <h3 class="font-bold text-slate-900 text-sm">Comunidad & Club WhatsApp</h3>
-                <p class="text-[10px] text-slate-500">Suscripción voluntaria de clientes</p>
+                <h3 class="font-bold text-slate-900 text-sm">Grupo Oficial de WhatsApp</h3>
+                <p class="text-[10px] text-slate-500">Invitación directa en cartas digitales</p>
               </div>
             </div>
 
             <label class="flex items-center gap-1.5 cursor-pointer">
               <span class="text-[11px] font-semibold" :class="config.whatsapp_subscription_enabled ? 'text-emerald-600' : 'text-slate-400'">
-                {{ config.whatsapp_subscription_enabled ? 'Activa' : 'Pausada' }}
+                {{ config.whatsapp_subscription_enabled ? 'Visible' : 'Oculto' }}
               </span>
               <input
                 type="checkbox"
@@ -270,7 +270,7 @@ function handleFactoryReset() {
 
           <div>
             <label class="block font-semibold text-slate-700 text-xs mb-1">
-              Enlace de Invitación al Grupo Oficial de WhatsApp
+              Enlace Oficial del Grupo de WhatsApp (https://chat.whatsapp.com/...)
             </label>
             <input
               v-model="config.whatsapp_group_url"
@@ -279,18 +279,29 @@ function handleFactoryReset() {
               @change="handleSave"
               class="input input-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary font-mono"
             />
-            <p class="text-[10px] text-slate-400 mt-1">
-              Los clientes que se registren serán dirigidos directamente a este enlace para unirse al grupo voluntariamente.
+            <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+              Al presionar <strong>"📱 Unirme al grupo de WhatsApp"</strong> en la carta, el cliente entrará directamente a este enlace sin registrar formularios ni compartir datos.
             </p>
           </div>
 
-          <button
-            type="button"
-            @click="handleSave"
-            class="btn btn-sm bg-slate-900 hover:bg-black text-white border-none rounded-xl text-xs w-full"
-          >
-            Guardar Configuración de WhatsApp
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              @click="handleSave"
+              class="btn btn-sm bg-slate-900 hover:bg-black text-white border-none rounded-xl text-xs flex-1"
+            >
+              Guardar Enlace del Grupo
+            </button>
+            <a
+              v-if="config.whatsapp_group_url && config.whatsapp_group_url.startsWith('http')"
+              :href="config.whatsapp_group_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn btn-sm btn-outline border-slate-300 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 rounded-xl text-xs"
+            >
+              Probar Enlace
+            </a>
+          </div>
         </div>
 
         <!-- Section 4: Control de Visibilidad de Precios -->

@@ -231,7 +231,7 @@ const DEFAULT_CONFIG: AppConfig = {
   musica_url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3',
   musica_volumen: 35,
   telefono_whatsapp: '+51 987 654 321',
-  whatsapp_group_url: 'https://chat.whatsapp.com/FLX38a7Z4lC4b6EXAMPLE',
+  whatsapp_group_url: '',
   whatsapp_subscription_enabled: true,
   mostrar_precios_carta: true,
   mostrar_precios_flyers: true
@@ -253,14 +253,14 @@ const products = ref<Producto[]>(loadInitial(STORAGE_KEY_PRODUCTS, DEFAULT_PRODU
 const config = ref<AppConfig>(loadInitial(STORAGE_KEY_CONFIG, DEFAULT_CONFIG))
 const whatsappSubscriptions = ref<WhatsAppSubscriber[]>(loadInitial(STORAGE_KEY_WHATSAPP_SUBS, DEFAULT_WHATSAPP_SUBS))
 
-// Automatically update old slogan or missing group settings in local cache
+// Automatically update old slogan or clear example group links in local cache
 let configChanged = false
 if (config.value.subtitulo === 'Gastronomía & Coctelería de Autor') {
   config.value.subtitulo = 'Sabor, música y buenos momentos'
   configChanged = true
 }
-if (!config.value.whatsapp_group_url) {
-  config.value.whatsapp_group_url = 'https://chat.whatsapp.com/FLX38a7Z4lC4b6EXAMPLE'
+if (config.value.whatsapp_group_url && config.value.whatsapp_group_url.includes('EXAMPLE')) {
+  config.value.whatsapp_group_url = ''
   configChanged = true
 }
 if (config.value.whatsapp_subscription_enabled === undefined) {
@@ -400,7 +400,7 @@ export function useMenuStore() {
       throw new Error('Por favor ingresa un número de celular válido de 9 dígitos.')
     }
 
-    const groupUrl = config.value.whatsapp_group_url || 'https://chat.whatsapp.com/FLX38a7Z4lC4b6EXAMPLE'
+    const groupUrl = config.value.whatsapp_group_url || ''
 
     // Check if phone already registered (prevent duplicates)
     const existing = whatsappSubscriptions.value.find(s => s.phone.replace(/\D/g, '') === cleanPhone)

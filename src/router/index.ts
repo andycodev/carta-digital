@@ -8,7 +8,6 @@ import AdminCartas from '@/views/admin/AdminCartas.vue'
 import AdminQR from '@/views/admin/AdminQR.vue'
 import AdminFlyers from '@/views/admin/AdminFlyers.vue'
 import AdminConfig from '@/views/admin/AdminConfig.vue'
-import AdminWhatsApp from '@/views/admin/AdminWhatsApp.vue'
 import LoginView from '@/views/LoginView.vue'
 import { useAuth } from '@/composables/useAuth'
 
@@ -68,9 +67,7 @@ const routes = [
       },
       {
         path: 'suscriptores',
-        name: 'admin-suscriptores',
-        component: AdminWhatsApp,
-        meta: { title: 'Suscriptores WhatsApp | Panel Admin', requiresAuth: true }
+        redirect: '/admin/configuracion'
       },
       {
         path: 'configuracion',

@@ -13,8 +13,8 @@ import {
   ArrowRightIcon,
   SparklesIcon,
   ChartBarIcon,
-  UserGroupIcon,
-  TagIcon
+  TagIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/vue/24/outline'
 
 const {
@@ -22,8 +22,7 @@ const {
   products,
   config,
   activeProducts,
-  unavailableProducts,
-  pendingSubscriptionsCount
+  unavailableProducts
 } = useMenuStore()
 
 const { currentShiftCategory, currentTime } = useMenuSchedule(categories)
@@ -137,11 +136,11 @@ const activeShiftsCount = computed(() => categories.value.filter(c => c.activo).
         </div>
 
         <router-link
-          to="/admin/suscriptores"
+          to="/admin/configuracion"
           class="btn btn-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200 rounded-xl flex items-center gap-1.5 self-start sm:self-auto shadow-2xs"
         >
-          <UserGroupIcon class="w-3.5 h-3.5 text-emerald-600" />
-          <span>{{ pendingSubscriptionsCount }} Clientes esperando invitación</span>
+          <ChatBubbleLeftRightIcon class="w-3.5 h-3.5 text-emerald-600" />
+          <span>Grupo Oficial de WhatsApp</span>
           <ArrowRightIcon class="w-3 h-3 text-emerald-600" />
         </router-link>
       </div>
