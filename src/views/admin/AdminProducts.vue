@@ -7,7 +7,9 @@ import {
   MagnifyingGlassIcon,
   PencilSquareIcon,
   TrashIcon,
-  XMarkIcon
+  XMarkIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/vue/24/outline'
 
 const {
@@ -26,6 +28,18 @@ const filterCategoryId = ref<string>('all')
 const isModalOpen = ref(false)
 const isEditing = ref(false)
 const currentEditId = ref<string | null>(null)
+const isSaving = ref(false)
+const saveError = ref<string | null>(null)
+const toastMessage = ref<string | null>(null)
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+function showToast(msg: string) {
+  toastMessage.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toastMessage.value = null
+  }, 3500)
+}
 
 const form = ref({
   nombre: '',
@@ -60,6 +74,7 @@ function getCategoryName(catId: string): string {
 function openCreateModal() {
   isEditing.value = false
   currentEditId.value = null
+  saveError.value = null
   form.value = {
     nombre: '',
     categoria_id: categories.value[0]?.id || '',
@@ -75,6 +90,7 @@ function openCreateModal() {
 function openEditModal(prod: Producto) {
   isEditing.value = true
   currentEditId.value = prod.id
+  saveError.value = null
   form.value = {
     nombre: prod.nombre,
     categoria_id: prod.categoria_id,
@@ -88,40 +104,84 @@ function openEditModal(prod: Producto) {
 }
 
 function closeModal() {
+  if (isSaving.value) return
   isModalOpen.value = false
+  saveError.value = null
 }
 
-function handleSaveProduct() {
-  if (!form.value.nombre.trim()) return
-
-  if (isEditing.value && currentEditId.value) {
-    updateProduct(currentEditId.value, {
-      nombre: form.value.nombre.trim(),
-      categoria_id: form.value.categoria_id,
-      precio: Number(form.value.precio),
-      descripcion: form.value.descripcion.trim() || null,
-      mostrar_descripcion: form.value.mostrar_descripcion,
-      imagen_url: form.value.imagen_url.trim() || null,
-      disponible: form.value.disponible
-    })
-  } else {
-    addProduct({
-      nombre: form.value.nombre.trim(),
-      categoria_id: form.value.categoria_id,
-      precio: Number(form.value.precio),
-      descripcion: form.value.descripcion.trim() || null,
-      mostrar_descripcion: form.value.mostrar_descripcion,
-      imagen_url: form.value.imagen_url.trim() || null,
-      disponible: form.value.disponible
-    })
+async function handleSaveProduct() {
+  if (!form.value.nombre.trim()) {
+    saveError.value = 'El nombre del producto es obligatorio.'
+    return
+  }
+  if (!form.value.categoria_id) {
+    saveError.value = 'Debes seleccionar una categoría o carta para el producto.'
+    return
   }
 
-  closeModal()
+  isSaving.value = true
+  saveError.value = null
+
+  try {
+    if (isEditing.value && currentEditId.value) {
+      const res = await updateProduct(currentEditId.value, {
+        nombre: form.value.nombre.trim(),
+        categoria_id: form.value.categoria_id,
+        precio: Number(form.value.precio),
+        descripcion: form.value.descripcion.trim() || null,
+        mostrar_descripcion: form.value.mostrar_descripcion,
+        imagen_url: form.value.imagen_url.trim() || null,
+        disponible: form.value.disponible
+      })
+
+      if (!res.success) {
+        saveError.value = res.error || 'Error al actualizar el producto en la base de datos'
+        return
+      }
+
+      showToast(`¡Plato "${form.value.nombre.trim()}" actualizado con éxito!`)
+    } else {
+      const res = await addProduct({
+        nombre: form.value.nombre.trim(),
+        categoria_id: form.value.categoria_id,
+        precio: Number(form.value.precio),
+        descripcion: form.value.descripcion.trim() || null,
+        mostrar_descripcion: form.value.mostrar_descripcion,
+        imagen_url: form.value.imagen_url.trim() || null,
+        disponible: form.value.disponible
+      })
+
+      if (!res.success) {
+        saveError.value = res.error || 'Error al registrar el producto en la base de datos'
+        return
+      }
+
+      showToast(`¡Plato "${form.value.nombre.trim()}" creado y registrado en la base de datos!`)
+    }
+
+    closeModal()
+  } catch (err: any) {
+    saveError.value = err.message || 'Error inesperado al procesar la solicitud'
+  } finally {
+    isSaving.value = false
+  }
 }
 
-function confirmDelete(prod: Producto) {
+async function confirmDelete(prod: Producto) {
   if (confirm(`¿Estás seguro de eliminar "${prod.nombre}" de la carta?`)) {
-    deleteProduct(prod.id)
+    const res = await deleteProduct(prod.id)
+    if (!res.success) {
+      alert(`No se pudo eliminar el producto: ${res.error || 'Error en servidor'}`)
+    } else {
+      showToast(`Producto "${prod.nombre}" eliminado correctamente.`)
+    }
+  }
+}
+
+async function handleToggleAvailability(prod: Producto) {
+  const res = await toggleProductAvailability(prod.id)
+  if (!res.success) {
+    alert(`Error al actualizar disponibilidad: ${res.error || 'Error en servidor'}`)
   }
 }
 </script>
@@ -243,7 +303,7 @@ function confirmDelete(prod: Producto) {
             <!-- Availability toggle -->
             <button
               type="button"
-              @click="toggleProductAvailability(prod.id)"
+              @click="handleToggleAvailability(prod)"
               class="badge text-xs font-semibold py-2.5 px-3 border cursor-pointer transition-colors"
               :class="prod.disponible ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'"
               :title="prod.disponible ? 'Clic para marcar como Agotado' : 'Clic para marcar como Disponible'"
@@ -286,9 +346,15 @@ function confirmDelete(prod: Producto) {
           <h3 class="font-bold text-slate-900 text-base">
             {{ isEditing ? 'Editar Producto' : 'Crear Nuevo Producto' }}
           </h3>
-          <button type="button" @click="closeModal" class="p-1 text-slate-400 hover:text-slate-700 rounded-lg">
+          <button type="button" @click="closeModal" :disabled="isSaving" class="p-1 text-slate-400 hover:text-slate-700 rounded-lg">
             <XMarkIcon class="w-5 h-5" />
           </button>
+        </div>
+
+        <!-- Alerta de Error de Guardado -->
+        <div v-if="saveError" class="alert alert-error text-xs py-2 px-3 rounded-xl flex items-center gap-2 mb-3 text-white">
+          <ExclamationTriangleIcon class="w-4 h-4 shrink-0" />
+          <span>{{ saveError }}</span>
         </div>
 
         <form @submit.prevent="handleSaveProduct" class="space-y-3.5 text-xs">
@@ -299,8 +365,9 @@ function confirmDelete(prod: Producto) {
               v-model="form.nombre"
               type="text"
               required
+              :disabled="isSaving"
               placeholder="Ej: Lomo Saltado Criollo"
-              class="input input-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary"
+              class="input input-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary disabled:opacity-60"
             />
           </div>
 
@@ -310,7 +377,8 @@ function confirmDelete(prod: Producto) {
               <label class="block font-semibold text-slate-700 mb-1">Carta Asignada</label>
               <select
                 v-model="form.categoria_id"
-                class="select select-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary"
+                :disabled="isSaving"
+                class="select select-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary disabled:opacity-60"
               >
                 <option v-for="cat in categories" :key="cat.id" :value="cat.id">
                   {{ cat.nombre }}
@@ -326,7 +394,8 @@ function confirmDelete(prod: Producto) {
                 step="0.50"
                 min="0"
                 required
-                class="input input-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary"
+                :disabled="isSaving"
+                class="input input-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary disabled:opacity-60"
               />
             </div>
           </div>
@@ -337,8 +406,9 @@ function confirmDelete(prod: Producto) {
             <textarea
               v-model="form.descripcion"
               rows="2"
+              :disabled="isSaving"
               placeholder="Escribe la descripción, ingredientes o detalles del plato..."
-              class="textarea textarea-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary leading-relaxed"
+              class="textarea textarea-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary leading-relaxed disabled:opacity-60"
             ></textarea>
 
             <div class="flex items-center gap-2 pt-0.5">
@@ -346,6 +416,7 @@ function confirmDelete(prod: Producto) {
                 id="show-desc-check"
                 v-model="form.mostrar_descripcion"
                 type="checkbox"
+                :disabled="isSaving"
                 class="checkbox checkbox-xs checkbox-primary rounded"
               />
               <label for="show-desc-check" class="text-xs font-medium text-slate-600 select-none cursor-pointer">
@@ -360,8 +431,9 @@ function confirmDelete(prod: Producto) {
             <input
               v-model="form.imagen_url"
               type="url"
+              :disabled="isSaving"
               placeholder="https://images.unsplash.com/..."
-              class="input input-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary"
+              class="input input-sm w-full bg-slate-50 border-slate-200 rounded-xl text-xs focus:bg-white focus:border-brand-primary disabled:opacity-60"
             />
             <div v-if="form.imagen_url" class="mt-2 flex items-center gap-2 p-1.5 bg-slate-50 rounded-lg border border-slate-100">
               <img :src="form.imagen_url" alt="Preview" class="w-10 h-10 object-cover rounded-md" />
@@ -375,6 +447,7 @@ function confirmDelete(prod: Producto) {
               id="disp-check"
               v-model="form.disponible"
               type="checkbox"
+              :disabled="isSaving"
               class="checkbox checkbox-sm checkbox-primary rounded"
             />
             <label for="disp-check" class="font-medium text-slate-700 select-none cursor-pointer">
@@ -387,19 +460,39 @@ function confirmDelete(prod: Producto) {
             <button
               type="button"
               @click="closeModal"
+              :disabled="isSaving"
               class="btn btn-sm btn-ghost text-slate-600 rounded-xl text-xs"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              class="btn btn-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-none rounded-xl text-xs"
+              :disabled="isSaving"
+              class="btn btn-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-none rounded-xl text-xs flex items-center gap-1.5"
             >
-              {{ isEditing ? 'Guardar Cambios' : 'Crear Producto' }}
+              <span v-if="isSaving" class="loading loading-spinner loading-xs"></span>
+              <span>{{ isSaving ? 'Guardando en BD...' : (isEditing ? 'Guardar Cambios' : 'Crear Producto') }}</span>
             </button>
           </div>
         </form>
       </div>
     </div>
+
+    <!-- Floating Toast Notification -->
+    <Transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0 translate-y-4 scale-95"
+      enter-to-class="opacity-100 translate-y-0 scale-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100 translate-y-0 scale-100"
+      leave-to-class="opacity-0 translate-y-4 scale-95"
+    >
+      <div v-if="toastMessage" class="fixed bottom-6 right-6 z-50 pointer-events-none">
+        <div class="bg-slate-950 text-white border border-emerald-500/40 rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-2.5">
+          <CheckCircleIcon class="w-5 h-5 text-emerald-400 shrink-0" />
+          <span class="text-xs font-semibold">{{ toastMessage }}</span>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>

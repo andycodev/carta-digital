@@ -30,6 +30,12 @@ export default defineConfig({
             src: 'pwa-512x512.svg',
             sizes: '512x512',
             type: 'image/svg+xml'
+          },
+          {
+            src: 'logo.png',
+            sizes: '500x500',
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }

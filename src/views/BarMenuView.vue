@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMenuStore } from '@/composables/useMenuStore'
 import { useVisitorTracker } from '@/composables/useVisitorTracker'
@@ -54,9 +54,29 @@ onUnmounted(() => {
   if (timer) clearInterval(timer)
 })
 
-// Filtrar productos por categoría del Bar
+// Sincronizar búsqueda con query param de URL si existe (ej. desde el modal del Bar)
+if (route.query.q) {
+  searchQuery.value = String(route.query.q)
+}
+
+watch(
+  () => route.query.q,
+  (newQ) => {
+    searchQuery.value = (newQ as string) || ''
+  }
+)
+
+// Filtrar productos por categoría del Bar y búsqueda activa
 const filteredBarProducts = computed(() => {
-  return products.value.filter(p => p.categoria_id === barCategory.value?.id)
+  let list = products.value.filter(p => p.categoria_id === barCategory.value?.id)
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter(p =>
+      p.nombre.toLowerCase().includes(q) ||
+      (p.descripcion && p.descripcion.toLowerCase().includes(q))
+    )
+  }
+  return list
 })
 
 // Bar category

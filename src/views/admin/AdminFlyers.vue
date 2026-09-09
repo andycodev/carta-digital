@@ -1572,6 +1572,124 @@ async function downloadFlyerForCategory(cat: Categoria) {
   }
 }
 
+// ── COMPARTIR FLYER POR WHATSAPP ─────────────────────────────────────────────
+const isSharingWhatsApp = ref(false)
+const copiedMessage = ref(false)
+let copyTimer: ReturnType<typeof setTimeout> | null = null
+
+function getWhatsAppFlyerMessage(cat: Categoria): string {
+  const name = (cat.nombre || '').toLowerCase()
+
+  let intro = ''
+  if (cat.siempre_disponible || name.includes('bar') || name.includes('coctel') || name.includes('trago')) {
+    intro = '🍹 *Carta del Bar* — Disfruta de nuestros tragos, cervezas, piqueos y buena música.'
+  } else if (name.includes('desayuno')) {
+    intro = '☀️ *Carta del desayuno de hoy* — Empieza tu día disfrutando nuestros deliciosos desayunos.'
+  } else if (name.includes('almuerzo')) {
+    intro = '🍽️ *Carta del almuerzo de hoy* — Ven y disfruta nuestros ricos platos preparados para ti.'
+  } else if (name.includes('cena')) {
+    intro = '🌙 *Carta de la cena de hoy* — Ven y disfruta nuestros ricos platos.'
+  } else {
+    intro = `✨ *Carta de ${cat.nombre} de hoy* — Ven y disfruta nuestros ricos platos preparados para ti.`
+  }
+
+  return `${intro}\n\n📍 *Las Delicias Restobar*\nCalle Santa Catalina 1401 - Chongoyape`
+}
+
+async function copyWhatsAppMessage(cat: Categoria) {
+  const msg = getWhatsAppFlyerMessage(cat)
+  try {
+    await navigator.clipboard.writeText(msg)
+    copiedMessage.value = true
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => {
+      copiedMessage.value = false
+    }, 3000)
+  } catch (e) {
+    console.warn('Error al copiar texto:', e)
+  }
+}
+
+async function shareFlyerToWhatsApp(cat: Categoria) {
+  if (!cat) return
+  isSharingWhatsApp.value = true
+
+  try {
+    // 1. Renderizar el canvas exacto del flyer actual (sin alterar el diseño)
+    const canvas = await renderFlyerCanvas(cat, selectedFormat.value, currentStyle.value)
+    const cleanCatName = sanitizeFilename(cat.nombre)
+    const formatSuffix = selectedFormat.value === 'tv'
+      ? 'TV-16x9'
+      : selectedFormat.value === 'social'
+        ? 'Redes-1x1'
+        : 'WhatsApp-9x16'
+
+    const styleSuffix = sanitizeFilename(currentStyle.value.name)
+    const filename = `Flyer-Las-Delicias-${cleanCatName}-${formatSuffix}-${styleSuffix}.png`
+    const message = getWhatsAppFlyerMessage(cat)
+
+    // Convertir canvas a Blob y File
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+    if (!blob) throw new Error('No se pudo generar la imagen del flyer')
+
+    const file = new File([blob], filename, { type: 'image/png' })
+
+    // 2. Si el navegador soporta compartir archivos directamente (móviles Android, iOS, etc.)
+    const canShareFiles = typeof navigator !== 'undefined' &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+
+    if (canShareFiles) {
+      try {
+        await navigator.share({
+          title: `Flyer ${cat.nombre} - Las Delicias Restobar`,
+          text: message,
+          files: [file]
+        })
+        return
+      } catch (shareErr: any) {
+        if (shareErr.name === 'AbortError') return
+        console.warn('Fallo al invocar navigator.share, procediendo con método alternativo:', shareErr)
+      }
+    }
+
+    // 3. Fallback para computadoras / navegadores de escritorio:
+    // A) Copiar imagen al portapapeles para que solo deban presionar Ctrl+V en WhatsApp
+    let imageCopied = false
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ])
+        imageCopied = true
+      }
+    } catch (clipErr) {
+      console.warn('Portapapeles no disponible para imágenes:', clipErr)
+    }
+
+    // B) Descargar la imagen
+    const downloadLink = document.createElement('a')
+    downloadLink.download = filename
+    downloadLink.href = URL.createObjectURL(blob)
+    document.body.appendChild(downloadLink)
+    downloadLink.click()
+    document.body.removeChild(downloadLink)
+
+    // C) Abrir WhatsApp Web con el texto prellenado
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`
+    window.open(waUrl, '_blank')
+
+    if (imageCopied) {
+      alert('¡Flyer copiado al portapapeles y descargado!\n\nSe abrió WhatsApp con el mensaje. Presiona Ctrl + V (Pegar) en el chat para adjuntar el flyer.')
+    }
+  } catch (err: any) {
+    console.error('Error al compartir flyer por WhatsApp:', err)
+    alert(`No se pudo compartir el flyer: ${err.message || 'Error inesperado'}`)
+  } finally {
+    isSharingWhatsApp.value = false
+  }
+}
+
 // Re-generate preview whenever any layout, font size, content parameter, or products change
 watch([
   selectedCategoryId,
@@ -1995,11 +2113,24 @@ watch(categories, (cats) => {
                 </div>
               </div>
 
-              <button type="button" @click="downloadFlyerForCategory(cat)" :disabled="downloadingCatId === cat.id"
-                class="btn btn-xs bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center gap-1 shrink-0 cursor-pointer min-h-[36px]">
-                <ArrowDownTrayIcon class="w-3.5 h-3.5" />
-                <span>{{ downloadingCatId === cat.id ? '...' : 'Descargar' }}</span>
-              </button>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button type="button" @click="shareFlyerToWhatsApp(cat)"
+                  :disabled="isSharingWhatsApp || downloadingCatId === cat.id"
+                  class="btn btn-xs bg-[#25D366] hover:bg-[#20bd5a] text-white border-none rounded-lg flex items-center gap-1 cursor-pointer min-h-[36px]"
+                  title="Compartir por WhatsApp">
+                  <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                  </svg>
+                  <span class="hidden sm:inline">WhatsApp</span>
+                </button>
+
+                <button type="button" @click="downloadFlyerForCategory(cat)" :disabled="downloadingCatId === cat.id"
+                  class="btn btn-xs bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center gap-1 shrink-0 cursor-pointer min-h-[36px]"
+                  title="Descargar imagen PNG">
+                  <ArrowDownTrayIcon class="w-3.5 h-3.5" />
+                  <span>{{ downloadingCatId === cat.id ? '...' : 'Descargar' }}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2098,14 +2229,57 @@ watch(categories, (cats) => {
             </div>
           </div>
 
-          <!-- Direct Prominent Download Action Button -->
-          <button type="button" v-if="currentCategory" @click="downloadFlyerForCategory(currentCategory)"
-            :disabled="downloadingCatId === currentCategory?.id"
-            class="btn w-full bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center gap-2 shadow-md cursor-pointer min-h-[46px] text-sm font-bold">
-            <ArrowDownTrayIcon class="w-5 h-5 text-amber-300" />
-            <span>{{downloadingCatId === currentCategory?.id ? 'Generando imagen...' : `Descargar Flyer de
-              ${currentCategory?.nombre} (${formatOptions.find(f => f.id === selectedFormat)?.name})` }}</span>
-          </button>
+          <!-- Direct Prominent Actions: WhatsApp Sharing & Direct Download -->
+          <div class="space-y-2.5" v-if="currentCategory">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <!-- Botón Compartir por WhatsApp -->
+              <button
+                type="button"
+                @click="shareFlyerToWhatsApp(currentCategory)"
+                :disabled="isSharingWhatsApp || downloadingCatId === currentCategory?.id"
+                class="btn bg-[#25D366] hover:bg-[#20bd5a] text-white border-none rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-950/20 cursor-pointer min-h-[48px] text-xs sm:text-sm font-bold active:scale-[0.98] transition-all"
+              >
+                <span v-if="isSharingWhatsApp" class="loading loading-spinner loading-xs"></span>
+                <svg v-else class="w-5 h-5 fill-current shrink-0" viewBox="0 0 24 24">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                </svg>
+                <span>{{ isSharingWhatsApp ? 'Preparando...' : 'Compartir por WhatsApp' }}</span>
+              </button>
+
+              <!-- Botón Descargar Imagen -->
+              <button
+                type="button"
+                @click="downloadFlyerForCategory(currentCategory)"
+                :disabled="isSharingWhatsApp || downloadingCatId === currentCategory?.id"
+                class="btn bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center gap-2 shadow-md cursor-pointer min-h-[48px] text-xs sm:text-sm font-bold active:scale-[0.98] transition-all"
+              >
+                <ArrowDownTrayIcon class="w-4 h-4 text-amber-300" />
+                <span>{{ downloadingCatId === currentCategory?.id ? 'Generando...' : 'Descargar Flyer (PNG)' }}</span>
+              </button>
+            </div>
+
+            <!-- Previsualización del mensaje generado automáticamente para WhatsApp -->
+            <div class="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-3 text-xs text-slate-800 space-y-1.5 shadow-2xs">
+              <div class="flex items-center justify-between font-bold text-emerald-900 text-[11px]">
+                <span class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Mensaje automático para acompañar el flyer:</span>
+                </span>
+                <button
+                  type="button"
+                  @click="copyWhatsAppMessage(currentCategory)"
+                  class="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-950 font-bold underline text-[10px] cursor-pointer"
+                  title="Copiar texto al portapapeles"
+                >
+                  <DocumentTextIcon class="w-3.5 h-3.5" />
+                  <span>{{ copiedMessage ? '¡Texto copiado!' : 'Copiar texto' }}</span>
+                </button>
+              </div>
+              <p class="whitespace-pre-line text-[11px] text-slate-700 bg-white/90 p-2.5 rounded-xl border border-emerald-100 font-sans leading-relaxed selection:bg-emerald-100">
+                {{ getWhatsAppFlyerMessage(currentCategory) }}
+              </p>
+            </div>
+          </div>
 
           <!-- Flyer Canvas Display Stage -->
           <div

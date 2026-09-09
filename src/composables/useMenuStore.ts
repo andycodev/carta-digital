@@ -44,7 +44,7 @@ const DEFAULT_WHATSAPP_SUBS: WhatsAppSubscriber[] = [
 
 const DEFAULT_CATEGORIES: Categoria[] = [
   {
-    id: '11111111-1111-1111-1111-111111111111',
+    id: 'a1111111-1111-1111-1111-111111111111',
     nombre: 'Desayunos',
     hora_inicio: '07:00:00',
     hora_fin: '11:59:59',
@@ -53,7 +53,7 @@ const DEFAULT_CATEGORIES: Categoria[] = [
     orden: 1
   },
   {
-    id: '22222222-2222-2222-2222-222222222222',
+    id: 'b2222222-2222-2222-2222-222222222222',
     nombre: 'Almuerzos',
     hora_inicio: '12:00:00',
     hora_fin: '17:59:59',
@@ -62,7 +62,7 @@ const DEFAULT_CATEGORIES: Categoria[] = [
     orden: 2
   },
   {
-    id: '33333333-3333-3333-3333-333333333333',
+    id: 'c3333333-3333-3333-3333-333333333333',
     nombre: 'Cenas',
     hora_inicio: '18:00:00',
     hora_fin: '23:59:59',
@@ -71,7 +71,7 @@ const DEFAULT_CATEGORIES: Categoria[] = [
     orden: 3
   },
   {
-    id: '44444444-4444-4444-4444-444444444444',
+    id: 'd4444444-4444-4444-4444-444444444444',
     nombre: 'Bar & Coctelería',
     hora_inicio: '00:00:00',
     hora_fin: '23:59:59',
@@ -549,60 +549,140 @@ function persist(key: string, data: unknown) {
 }
 
 export function useMenuStore() {
-  // --- PRODUCT ACTIONS ---
-  function addProduct(productData: Omit<Producto, 'id'>) {
+  // --- PRODUCT ACTIONS (CRUD ROBUSTO CON SUPABASE Y UUID) ---
+  async function addProduct(productData: Omit<Producto, 'id'>): Promise<{ success: boolean; data?: Producto; error?: string }> {
+    // Generar UUID estándar compatible con PostgreSQL tipo 'uuid'
+    const generatedId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `00000000-0000-4000-8000-${Date.now().toString(16).padStart(12, '0')}`
+
     const newProd: Producto = {
       ...productData,
-      id: `p-${Date.now()}`
+      id: generatedId
     }
-    products.value.unshift(newProd)
-    persist(STORAGE_KEY_PRODUCTS, products.value)
 
     if (isSupabaseConfigured) {
-      supabase.from('productos').insert(newProd).then(({ error }) => {
-        if (error) console.error('Error inserting to Supabase:', error)
-      })
+      try {
+        const { data, error } = await supabase
+          .from('productos')
+          .insert(newProd)
+          .select()
+          .single()
+
+        if (error) {
+          console.error('[Menu] Error inserting to Supabase:', error)
+          return { success: false, error: error.message || 'Error al registrar en la base de datos' }
+        }
+
+        const savedProd: Producto = {
+          ...data,
+          precio: Number(data.precio)
+        }
+
+        const existingIdx = products.value.findIndex(p => p.id === savedProd.id)
+        if (existingIdx >= 0) {
+          products.value[existingIdx] = savedProd
+        } else {
+          products.value.unshift(savedProd)
+        }
+        persist(STORAGE_KEY_PRODUCTS, products.value)
+        return { success: true, data: savedProd }
+      } catch (err: any) {
+        console.error('[Menu] Unexpected error inserting product:', err)
+        return { success: false, error: err.message || 'Error de conexión con el servidor' }
+      }
+    } else {
+      products.value.unshift(newProd)
+      persist(STORAGE_KEY_PRODUCTS, products.value)
+      return { success: true, data: newProd }
     }
-    return newProd
   }
 
-  function updateProduct(id: string, updates: Partial<Producto>) {
+  async function updateProduct(id: string, updates: Partial<Producto>): Promise<{ success: boolean; error?: string }> {
     const idx = products.value.findIndex(p => p.id === id)
-    if (idx !== -1) {
+    if (idx === -1) {
+      return { success: false, error: 'Producto no encontrado en la carta local' }
+    }
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('productos')
+          .update(updates)
+          .eq('id', id)
+          .select()
+          .single()
+
+        if (error) {
+          console.error('[Menu] Error updating Supabase:', error)
+          return { success: false, error: error.message || 'Error al actualizar en la base de datos' }
+        }
+
+        if (data) {
+          products.value[idx] = { ...data, precio: Number(data.precio) }
+        } else {
+          products.value[idx] = { ...products.value[idx], ...updates }
+        }
+        persist(STORAGE_KEY_PRODUCTS, products.value)
+        return { success: true }
+      } catch (err: any) {
+        console.error('[Menu] Unexpected error updating product:', err)
+        return { success: false, error: err.message || 'Error de conexión al actualizar' }
+      }
+    } else {
       products.value[idx] = { ...products.value[idx], ...updates }
       persist(STORAGE_KEY_PRODUCTS, products.value)
-
-      if (isSupabaseConfigured) {
-        supabase.from('productos').update(updates).eq('id', id).then(({ error }) => {
-          if (error) console.error('Error updating Supabase:', error)
-        })
-      }
+      return { success: true }
     }
   }
 
-  function deleteProduct(id: string) {
-    products.value = products.value.filter(p => p.id !== id)
+  async function deleteProduct(id: string): Promise<{ success: boolean; error?: string }> {
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('productos').delete().eq('id', id)
+        if (error) {
+          console.error('[Menu] Error deleting from Supabase:', error)
+          return { success: false, error: error.message || 'Error al eliminar de la base de datos' }
+        }
+        products.value = products.value.filter(p => p.id !== id)
+        persist(STORAGE_KEY_PRODUCTS, products.value)
+        return { success: true }
+      } catch (err: any) {
+        console.error('[Menu] Unexpected error deleting product:', err)
+        return { success: false, error: err.message || 'Error de conexión al eliminar' }
+      }
+    } else {
+      products.value = products.value.filter(p => p.id !== id)
+      persist(STORAGE_KEY_PRODUCTS, products.value)
+      return { success: true }
+    }
+  }
+
+  async function toggleProductAvailability(id: string): Promise<{ success: boolean; error?: string }> {
+    const prod = products.value.find(p => p.id === id)
+    if (!prod) return { success: false, error: 'Producto no encontrado' }
+
+    const newStatus = !prod.disponible
+    prod.disponible = newStatus
     persist(STORAGE_KEY_PRODUCTS, products.value)
 
     if (isSupabaseConfigured) {
-      supabase.from('productos').delete().eq('id', id).then(({ error }) => {
-        if (error) console.error('Error deleting from Supabase:', error)
-      })
-    }
-  }
-
-  function toggleProductAvailability(id: string) {
-    const prod = products.value.find(p => p.id === id)
-    if (prod) {
-      prod.disponible = !prod.disponible
-      persist(STORAGE_KEY_PRODUCTS, products.value)
-
-      if (isSupabaseConfigured) {
-        supabase.from('productos').update({ disponible: prod.disponible }).eq('id', id).then(({ error }) => {
-          if (error) console.error('Error toggling in Supabase:', error)
-        })
+      try {
+        const { error } = await supabase.from('productos').update({ disponible: newStatus }).eq('id', id)
+        if (error) {
+          console.error('[Menu] Error toggling in Supabase:', error)
+          prod.disponible = !newStatus
+          persist(STORAGE_KEY_PRODUCTS, products.value)
+          return { success: false, error: error.message }
+        }
+        return { success: true }
+      } catch (err: any) {
+        prod.disponible = !newStatus
+        persist(STORAGE_KEY_PRODUCTS, products.value)
+        return { success: false, error: err.message }
       }
     }
+    return { success: true }
   }
 
   // --- CATEGORY / CARTA ACTIONS ---
