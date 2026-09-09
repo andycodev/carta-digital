@@ -31,6 +31,8 @@ export interface AppConfig {
   whatsapp_subscription_enabled?: boolean
   mostrar_precios_carta?: boolean
   mostrar_precios_flyers?: boolean
+  bar_video_url?: string   // YouTube embed o URL local /public/video.mp4
+  bar_music_url?: string   // URL de música ambiental del bar
 }
 
 export type WhatsAppSubscriptionStatus = 'pending' | 'contacted' | 'joined' | 'rejected'
