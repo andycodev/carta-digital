@@ -8,6 +8,7 @@ import HeaderMenu from '@/components/HeaderMenu.vue'
 import BarImageSlider from '@/components/BarImageSlider.vue'
 import ProductCard from '@/components/ProductCard.vue'
 import ProductImageModal from '@/components/ProductImageModal.vue'
+import WhatsAppSubscribeCard from '@/components/WhatsAppSubscribeCard.vue'
 import type { Producto } from '@/types/database'
 import {
   InboxIcon,
@@ -91,7 +92,7 @@ function closeProductImage() {
     <BarImageSlider />
 
     <!-- Main Content compacto -->
-    <main class="flex-1 max-w-3xl w-full mx-auto px-3.5 sm:px-4 pb-20">
+    <main class="flex-1 max-w-3xl w-full mx-auto px-3.5 sm:px-4 pb-6 sm:pb-8">
 
       <!-- Header de sección compacto -->
       <div class="my-2 flex items-center justify-between border-b border-white/10 pb-2">
@@ -121,7 +122,7 @@ function closeProductImage() {
       <!-- Product Cards - usando ProductCard compartido -->
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <ProductCard v-for="prod in filteredBarProducts" :key="prod.id" :product="prod"
-          @open-image="openProductImage" />
+          :dark-mode="true" @open-image="openProductImage" />
       </div>
 
       <!-- Botón volver al menú principal -->
@@ -132,6 +133,9 @@ function closeProductImage() {
           <span>Volver al menú principal</span>
         </router-link>
       </div>
+
+      <!-- WhatsApp Community Subscription Card (Bar) -->
+      <WhatsAppSubscribeCard source-menu="bar" />
     </main>
 
     <!-- Footer minimalista -->

@@ -218,7 +218,7 @@ async function downloadPrintableDisplayCard() {
     // 9. Copyright footer
     ctx.fillStyle = '#475569'
     ctx.font = '20px "Inter", sans-serif'
-    ctx.fillText('Las Delicias Restobar • Calle Santa Catalina 14001 - Chongoyape', 600, 1690)
+    ctx.fillText('Las Delicias Restobar • Calle Santa Catalina 1401 - Chongoyape', 600, 1690)
 
     // Download triggered
     const dataUrl = canvas.toDataURL('image/png')
@@ -249,7 +249,8 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
+    <div
+      class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
       <div>
         <h2 class="text-lg font-bold text-slate-900">Códigos QR de las Cartas Públicas</h2>
         <p class="text-xs text-slate-500">
@@ -258,29 +259,20 @@ onMounted(() => {
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          @click="downloadStandaloneQR"
-          class="btn btn-sm bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
-        >
+        <button type="button" @click="downloadStandaloneQR"
+          class="btn btn-sm bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer">
           <ArrowDownTrayIcon class="w-4 h-4" />
           <span>Descargar Imagen QR (.PNG)</span>
         </button>
 
-        <button
-          type="button"
-          @click="downloadPrintableDisplayCard"
-          class="btn btn-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-none rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
-        >
+        <button type="button" @click="downloadPrintableDisplayCard"
+          class="btn btn-sm bg-brand-primary hover:bg-brand-primary-hover text-white border-none rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer">
           <SparklesIcon class="w-4 h-4" />
           <span>Descargar Ficha Imprimible</span>
         </button>
 
-        <button
-          type="button"
-          @click="printCard"
-          class="btn btn-sm btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
-        >
+        <button type="button" @click="printCard"
+          class="btn btn-sm btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white rounded-xl text-xs flex items-center gap-1.5 cursor-pointer">
           <PrinterIcon class="w-4 h-4" />
           <span>Imprimir</span>
         </button>
@@ -288,24 +280,19 @@ onMounted(() => {
     </div>
 
     <!-- Selector de Destino del QR (Carta Principal vs Carta del Bar) -->
-    <div class="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-2 no-print">
+    <div
+      class="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-2 no-print">
       <div class="flex items-center gap-1 w-full sm:w-auto">
-        <button
-          type="button"
-          @click="handleSwitchTarget('main')"
+        <button type="button" @click="handleSwitchTarget('main')"
           class="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
-          :class="selectedQrTarget === 'main' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'"
-        >
+          :class="selectedQrTarget === 'main' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'">
           <BuildingStorefrontIcon class="w-4 h-4" />
           <span>QR Carta Principal (Cocina / Salón)</span>
         </button>
 
-        <button
-          type="button"
-          @click="handleSwitchTarget('bar')"
+        <button type="button" @click="handleSwitchTarget('bar')"
           class="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
-          :class="selectedQrTarget === 'bar' ? 'bg-brand-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'"
-        >
+          :class="selectedQrTarget === 'bar' ? 'bg-brand-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'">
           <SparklesIcon class="w-4 h-4" />
           <span>QR Exclusivo del Bar (/bar)</span>
         </button>
@@ -320,7 +307,8 @@ onMounted(() => {
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       <!-- Left / Center: Official QR Card Preview -->
       <div class="lg:col-span-7 flex flex-col items-center">
-        <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-lg max-w-md w-full text-center space-y-5 print:border-none print:shadow-none">
+        <div
+          class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-lg max-w-md w-full text-center space-y-5 print:border-none print:shadow-none">
           <!-- Business identity -->
           <div>
             <span class="text-xs font-bold uppercase tracking-widest text-brand-primary">
@@ -336,12 +324,8 @@ onMounted(() => {
 
           <!-- QR Code Container -->
           <div class="p-4 bg-slate-50 rounded-3xl border border-slate-200/80 inline-block shadow-inner mx-auto">
-            <img
-              v-if="qrDataUrl"
-              :src="qrDataUrl"
-              alt="QR Oficial Las Delicias"
-              class="w-56 h-56 sm:w-64 sm:h-64 object-contain mx-auto"
-            />
+            <img v-if="qrDataUrl" :src="qrDataUrl" alt="QR Oficial Las Delicias"
+              class="w-56 h-56 sm:w-64 sm:h-64 object-contain mx-auto" />
             <div v-else class="w-56 h-56 sm:w-64 sm:h-64 flex items-center justify-center text-xs text-slate-400">
               <QrCodeIcon class="w-12 h-12 text-slate-300 animate-pulse" />
             </div>
@@ -358,7 +342,8 @@ onMounted(() => {
           </div>
 
           <!-- Clean URL Display with Copy button -->
-          <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2 text-xs no-print">
+          <div
+            class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2 text-xs no-print">
             <div class="flex items-center gap-2 min-w-0">
               <GlobeAltIcon class="w-4 h-4 text-brand-primary shrink-0" />
               <span class="font-mono text-slate-700 truncate font-semibold">
@@ -366,12 +351,9 @@ onMounted(() => {
               </span>
             </div>
 
-            <button
-              type="button"
-              @click="copyPublicUrl"
+            <button type="button" @click="copyPublicUrl"
               class="btn btn-xs rounded-lg flex items-center gap-1 shrink-0 transition-all cursor-pointer"
-              :class="isCopied ? 'btn-success text-white' : 'btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white'"
-            >
+              :class="isCopied ? 'btn-success text-white' : 'btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white'">
               <component :is="isCopied ? CheckIcon : ClipboardDocumentIcon" class="w-3.5 h-3.5" />
               <span>{{ isCopied ? '¡Copiado!' : 'Copiar URL' }}</span>
             </button>
@@ -389,33 +371,34 @@ onMounted(() => {
 
           <ul class="space-y-3 text-slate-600">
             <li class="flex items-start gap-2.5">
-              <span class="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">✓</span>
-              <span><strong>Impresión Unificada:</strong> Puedes imprimir un único diseño de código QR para todo el local, barras, caja y publicidad sin confusiones.</span>
+              <span
+                class="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">✓</span>
+              <span><strong>Impresión Unificada:</strong> Puedes imprimir un único diseño de código QR para todo el
+                local, barras, caja y publicidad sin confusiones.</span>
             </li>
             <li class="flex items-start gap-2.5">
-              <span class="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">✓</span>
-              <span><strong>Enlace Público Limpio:</strong> Los clientes acceden a la dirección raíz oficial <code class="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded text-slate-800">{{ getPublicCartaUrl() }}</code> de forma directa, rápida y sin parámetros.</span>
+              <span
+                class="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">✓</span>
+              <span><strong>Enlace Público Limpio:</strong> Los clientes acceden a la dirección raíz oficial <code
+                  class="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded text-slate-800">{{ getPublicCartaUrl() }}</code>
+                de forma directa, rápida y sin parámetros.</span>
             </li>
             <li class="flex items-start gap-2.5">
-              <span class="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">✓</span>
-              <span><strong>Actualización en Vivo:</strong> Cualquier cambio en platos, bebidas, horarios o precios se refleja inmediatamente en el menú que el cliente visualiza.</span>
+              <span
+                class="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">✓</span>
+              <span><strong>Actualización en Vivo:</strong> Cualquier cambio en platos, bebidas, horarios o precios se
+                refleja inmediatamente en el menú que el cliente visualiza.</span>
             </li>
           </ul>
 
           <div class="pt-3 border-t border-slate-100 space-y-2">
-            <button
-              type="button"
-              @click="downloadPrintableDisplayCard"
-              class="btn btn-sm w-full bg-brand-primary hover:bg-brand-primary-hover text-white border-none rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-            >
+            <button type="button" @click="downloadPrintableDisplayCard"
+              class="btn btn-sm w-full bg-brand-primary hover:bg-brand-primary-hover text-white border-none rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer">
               <ArrowDownTrayIcon class="w-4 h-4" />
               <span>Descargar Ficha Imprimible para Salón / Barra (PNG Alta Calidad)</span>
             </button>
-            <button
-              type="button"
-              @click="downloadStandaloneQR"
-              class="btn btn-sm w-full btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-            >
+            <button type="button" @click="downloadStandaloneQR"
+              class="btn btn-sm w-full btn-outline border-slate-300 text-slate-700 hover:bg-slate-900 hover:text-white rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer">
               <QrCodeIcon class="w-4 h-4" />
               <span>Descargar Solo Código QR (PNG 1000x1000)</span>
             </button>

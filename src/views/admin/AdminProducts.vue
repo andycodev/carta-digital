@@ -5,7 +5,6 @@ import type { Producto } from '@/types/database'
 import {
   PlusIcon,
   MagnifyingGlassIcon,
-  CakeIcon,
   PencilSquareIcon,
   TrashIcon,
   XMarkIcon
@@ -206,7 +205,11 @@ function confirmDelete(prod: Producto) {
                 :alt="prod.nombre"
                 class="w-full h-full object-cover"
               />
-              <CakeIcon v-else class="w-5 h-5 text-brand-primary/80" />
+              <svg v-else class="w-5 h-5 text-brand-primary/80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 18.5h18" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 18.5a7 7 0 0 1 14 0" />
+                <circle cx="12" cy="8.5" r="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
             </div>
 
             <div class="min-w-0">

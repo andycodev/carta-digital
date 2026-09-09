@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { useMenuStore } from '@/composables/useMenuStore'
 import {
   ChatBubbleLeftRightIcon,
@@ -17,7 +17,15 @@ withDefaults(defineProps<{
 const { config } = useMenuStore()
 const errorMessage = ref<string | null>(null)
 const isDismissed = ref(false)
-let reopenTimer: ReturnType<typeof setTimeout> | null = null
+
+// Check if user already dismissed it in this session
+try {
+  if (sessionStorage.getItem('wa_badge_dismissed') === '1') {
+    isDismissed.value = true
+  }
+} catch {
+  // ignore storage error
+}
 
 // Obtener el enlace efectivo del grupo de WhatsApp
 function resolveWhatsAppTarget(): string | null {
@@ -57,15 +65,12 @@ function handleJoinGroup() {
 
 function dismiss() {
   isDismissed.value = true
-  // Auto-reopen after 10 seconds
-  reopenTimer = setTimeout(() => {
-    isDismissed.value = false
-  }, 10000)
+  try {
+    sessionStorage.setItem('wa_badge_dismissed', '1')
+  } catch {
+    // ignore
+  }
 }
-
-onUnmounted(() => {
-  if (reopenTimer) clearTimeout(reopenTimer)
-})
 </script>
 
 <template>
@@ -73,23 +78,26 @@ onUnmounted(() => {
   <transition name="wa-slide">
     <section
       v-if="config.whatsapp_subscription_enabled !== false && !isDismissed"
-      class="my-6 rounded-3xl overflow-hidden shadow-lg"
+      class="mt-4 mb-2 rounded-3xl overflow-hidden shadow-lg"
     >
       <!-- Contenedor con diseño premium -->
-      <div class="relative bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-5 sm:p-6 text-white border border-emerald-500/20">
+      <div class="relative bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-4 sm:p-5 text-white border border-emerald-500/20">
         <!-- Decorative glow -->
         <div class="absolute -top-6 -right-6 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
         <div class="absolute -bottom-4 -left-4 w-24 h-24 bg-emerald-400/10 rounded-full blur-xl pointer-events-none"></div>
 
-        <!-- Close button -->
+        <!-- Close button con área táctil cómoda en móvil (mínimo 44px) -->
         <button
           type="button"
-          @click="dismiss"
-          class="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-all cursor-pointer z-10"
-          aria-label="Cerrar"
-          title="Cerrar (reaparece en 10 seg)"
+          @click.stop.prevent="dismiss"
+          @touchend.stop.prevent="dismiss"
+          class="absolute top-2 right-2 p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 active:bg-white/20 transition-all cursor-pointer z-30 touch-manipulation"
+          aria-label="Cerrar aviso de WhatsApp"
+          title="Cerrar"
         >
-          <XMarkIcon class="w-4 h-4" />
+          <div class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center pointer-events-none">
+            <XMarkIcon class="w-4 h-4" />
+          </div>
         </button>
 
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">

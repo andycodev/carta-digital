@@ -17,6 +17,7 @@ import {
   DocumentTextIcon,
   MapPinIcon,
   TagIcon,
+  CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   AdjustmentsHorizontalIcon
@@ -63,7 +64,7 @@ interface AIStyle {
   promoSubColor: string
 }
 
-const businessAddress = 'Calle Santa Catalina 14001 - Chongoyape'
+const businessAddress = 'Calle Santa Catalina 1401 - Chongoyape'
 
 const formatOptions: FormatOption[] = [
   {
@@ -231,11 +232,39 @@ const selectedCategoryId = ref<string>('')
 const selectedAiStyleId = ref<string>('classic')
 const showDescriptionsInFlyer = ref(true)
 const showPricesInFlyer = ref<boolean>(config.value.mostrar_precios_flyers !== false)
+// Permite incluir todos los platos de la carta correspondiente (por defecto true para flyers completos)
+const showOnlyAvailableInFlyer = ref<boolean>(false)
 
 // Structural variation states (Logo position, typography, and frame design)
 const selectedLogoPosition = ref<LogoPosition>('center')
 const selectedFontTheme = ref<FontTheme>('serif')
 const selectedFrameStyle = ref<FrameStyle>('double')
+
+// Font scale control state & presets (Aumentar / Reducir tamaño de letra)
+const savedFontScale = localStorage.getItem('carta_flyer_font_scale')
+const flyerFontScale = ref<number>(savedFontScale ? Math.min(1.5, Math.max(0.9, parseFloat(savedFontScale))) : 1.0)
+
+const fontScalePresets = [
+  { id: 'normal', label: 'Normal', pct: '100%', scale: 1.0 },
+  { id: 'medium', label: 'Mediana', pct: '+15%', scale: 1.15 },
+  { id: 'large', label: 'Grande', pct: '+30%', scale: 1.30 },
+  { id: 'xlarge', label: 'Gigante', pct: '+45%', scale: 1.45 }
+]
+
+function adjustFontScale(delta: number) {
+  const next = Math.round((flyerFontScale.value + delta) * 100) / 100
+  if (next >= 0.9 && next <= 1.5) {
+    flyerFontScale.value = next
+  }
+}
+
+watch(flyerFontScale, (val) => {
+  try {
+    localStorage.setItem('carta_flyer_font_scale', String(val))
+  } catch {
+    // ignore
+  }
+})
 
 const isGenerating = ref(false)
 const downloadingCatId = ref<string | null>(null)
@@ -332,6 +361,15 @@ const currentCategory = computed(() => {
   return categories.value.find(c => c.id === selectedCategoryId.value) || categories.value[0]
 })
 
+function getDishesForCategory(catId: string): Producto[] {
+  if (!catId) return []
+  return products.value.filter(p => {
+    if (p.categoria_id?.trim() !== catId.trim()) return false
+    if (showOnlyAvailableInFlyer.value && !p.disponible) return false
+    return true
+  })
+}
+
 function getCategoryIcon(name: string, siempre247: boolean) {
   const n = name.toLowerCase()
   if (siempre247 || n.includes('bar') || n.includes('coctel') || n.includes('bebida')) {
@@ -371,6 +409,26 @@ function drawRoundedRect(
   ctx.lineTo(x, y + r)
   ctx.arcTo(x, y, x + r, y, r)
   ctx.closePath()
+}
+
+// Safely truncate and fit text into canvas with dynamic measurement to avoid overlap
+function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (!text) return ''
+  if (ctx.measureText(text).width <= maxWidth) return text
+  let low = 0
+  let high = text.length
+  let best = ''
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2)
+    const candidate = text.substring(0, mid).trim() + '...'
+    if (ctx.measureText(candidate).width <= maxWidth) {
+      best = candidate
+      low = mid + 1
+    } else {
+      high = mid - 1
+    }
+  }
+  return best || text.substring(0, 3) + '...'
 }
 
 // Draw framed perimeter based on selected frame style
@@ -464,6 +522,9 @@ async function renderFlyerWhatsApp(cat: Categoria, dishes: Producto[], style: AI
   if (!ctx) throw new Error('Context error')
 
   const fonts = getFontFamilies(selectedFontTheme.value)
+  const scale = flyerFontScale.value
+  const titleScale = 1 + (scale - 1) * 0.4
+  const headerScale = 1 + (scale - 1) * 0.35
 
   // Gradient background
   const bgGrad = ctx.createLinearGradient(0, 0, 0, 1920)
@@ -507,19 +568,19 @@ async function renderFlyerWhatsApp(cat: Categoria, dishes: Producto[], style: AI
 
     ctx.textAlign = 'left'
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 38px ${fonts.title}`
+    ctx.font = `bold ${Math.round(38 * titleScale)}px ${fonts.title}`
     ctx.fillText('LAS DELICIAS RESTOBAR', 300, 140)
 
     ctx.fillStyle = style.sloganColor
-    ctx.font = `bold 20px ${fonts.slogan}`
+    ctx.font = `bold ${Math.round(20 * headerScale)}px ${fonts.slogan}`
     ctx.fillText(activeSlogan.value, 300, 175)
 
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 42px ${fonts.title}`
+    ctx.font = `bold ${Math.round(42 * titleScale)}px ${fonts.title}`
     ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 300, 235)
 
     ctx.fillStyle = style.descColor
-    ctx.font = `18px ${fonts.desc}`
+    ctx.font = `${Math.round(18 * headerScale)}px ${fonts.desc}`
     ctx.fillText(cat.siempre_disponible ? 'Servicio Continuo • Todo el Día' : `Horario: ${cat.hora_inicio.substring(0, 5)} a ${cat.hora_fin.substring(0, 5)} hrs`, 300, 268)
 
     currentY = 305
@@ -550,19 +611,19 @@ async function renderFlyerWhatsApp(cat: Categoria, dishes: Producto[], style: AI
 
     ctx.textAlign = 'left'
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 38px ${fonts.title}`
+    ctx.font = `bold ${Math.round(38 * titleScale)}px ${fonts.title}`
     ctx.fillText('LAS DELICIAS RESTOBAR', 85, 140)
 
     ctx.fillStyle = style.sloganColor
-    ctx.font = `bold 20px ${fonts.slogan}`
+    ctx.font = `bold ${Math.round(20 * headerScale)}px ${fonts.slogan}`
     ctx.fillText(activeSlogan.value, 85, 175)
 
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 42px ${fonts.title}`
+    ctx.font = `bold ${Math.round(42 * titleScale)}px ${fonts.title}`
     ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 85, 235)
 
     ctx.fillStyle = style.descColor
-    ctx.font = `18px ${fonts.desc}`
+    ctx.font = `${Math.round(18 * headerScale)}px ${fonts.desc}`
     ctx.fillText(cat.siempre_disponible ? 'Servicio Continuo • Todo el Día' : `Horario: ${cat.hora_inicio.substring(0, 5)} a ${cat.hora_fin.substring(0, 5)} hrs`, 85, 268)
 
     currentY = 305
@@ -597,25 +658,25 @@ async function renderFlyerWhatsApp(cat: Categoria, dishes: Producto[], style: AI
       }
     } catch {
       ctx.fillStyle = style.titleColor
-      ctx.font = `bold 44px ${fonts.title}`
+      ctx.font = `bold ${Math.round(44 * titleScale)}px ${fonts.title}`
       ctx.textAlign = 'center'
       ctx.fillText('LAS DELICIAS RESTOBAR', 540, 150)
     }
 
     currentY = logoY + logoSize + 35
     ctx.fillStyle = style.sloganColor
-    ctx.font = `bold 24px ${fonts.slogan}`
+    ctx.font = `bold ${Math.round(24 * headerScale)}px ${fonts.slogan}`
     ctx.textAlign = 'center'
     ctx.fillText(activeSlogan.value, 540, currentY)
 
     currentY += 55
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 48px ${fonts.title}`
+    ctx.font = `bold ${Math.round(48 * titleScale)}px ${fonts.title}`
     ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 540, currentY)
 
     currentY += 35
     ctx.fillStyle = style.descColor
-    ctx.font = `22px ${fonts.desc}`
+    ctx.font = `${Math.round(22 * headerScale)}px ${fonts.desc}`
     if (cat.siempre_disponible) {
       ctx.fillText('Servicio Continuo • Disponible Todo el Día', 540, currentY)
     } else {
@@ -659,81 +720,167 @@ async function renderFlyerWhatsApp(cat: Categoria, dishes: Producto[], style: AI
 
     ctx.textAlign = 'center'
     ctx.fillStyle = style.promoTagColor
-    ctx.font = `bold 17px ${fonts.dish}`
+    ctx.font = `bold ${Math.round(17 * headerScale)}px ${fonts.dish}`
     ctx.fillText('★ PROMOCIÓN ESPECIAL DE ALMUERZO ★', 540, badgeY + 34)
 
     ctx.fillStyle = style.promoTitleColor
-    ctx.font = `900 46px ${fonts.title}`
-    ctx.fillText(showPricesInFlyer.value ? 'MENÚ DESDE S/ 10' : 'MENÚ EJECUTIVO DEL DÍA', 540, badgeY + 84)
+    ctx.font = `900 ${Math.round(46 * titleScale)}px ${fonts.title}`
+    ctx.fillText('MENÚS DESDE S/ 10', 540, badgeY + 84)
 
     ctx.fillStyle = style.promoSubColor
-    ctx.font = `italic bold 22px ${fonts.slogan}`
-    ctx.fillText('“Buen sabor, buen precio.”', 540, badgeY + 117)
+    ctx.font = `italic bold ${Math.round(22 * headerScale)}px ${fonts.slogan}`
+    ctx.fillText('"¡Buen sabor, buen precio!"', 540, badgeY + 117)
 
     currentY = badgeY + badgeH + 45
   } else {
     currentY += 50
   }
 
-  // Dishes list
-  const maxItems = isAlmuerzo ? 9 : 11
-  const items = dishes.slice(0, maxItems)
+  // Dishes list: ensure ALL dishes of the carta are shown without cutting off
+  const isTwoCol = dishes.length > 12
+  const items = dishes.slice(0, 24)
   const availableHeight = 1720 - currentY
-  const rowHeight = items.length > 0 ? Math.min(105, Math.floor(availableHeight / items.length)) : 95
 
-  for (let i = 0; i < items.length; i++) {
-    const dish = items[i]
-    const itemY = currentY + (i * rowHeight)
+  if (isTwoCol) {
+    const colCount = Math.ceil(items.length / 2)
+    const colW = 440
+    const col1X = 75
+    const col2X = 565
+    const rowH = Math.min(95, Math.floor(availableHeight / colCount))
+    const dishFontSize = Math.round(20 * scale)
+    const priceFontSize = Math.round(22 * scale)
+    const descFontSize = Math.round(15 * scale)
+    const descOffset = Math.round(22 * Math.max(1, scale * 0.9))
 
-    // Modern card background if style selected
-    if (selectedFrameStyle.value === 'modern_cards') {
-      const cardBg = style.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
-      drawRoundedRect(ctx, 80, itemY - 32, 920, rowHeight - 12, 14)
-      ctx.fillStyle = cardBg
-      ctx.fill()
-    }
+    for (let i = 0; i < items.length; i++) {
+      const dish = items[i]
+      const isCol2 = i >= colCount
+      const colX = isCol2 ? col2X : col1X
+      const rowIndex = isCol2 ? i - colCount : i
+      const itemY = currentY + (rowIndex * rowH)
 
-    ctx.textAlign = 'left'
-    ctx.fillStyle = style.textColor
-    ctx.font = `bold 27px ${fonts.dish}`
+      if (selectedFrameStyle.value === 'modern_cards') {
+        const cardBg = style.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
+        drawRoundedRect(ctx, colX - 10, itemY - Math.round(26 * Math.min(1.2, scale)), colW + 20, rowH - 10, 12)
+        ctx.fillStyle = cardBg
+        ctx.fill()
+      }
 
-    let displayName = dish.nombre
-    const maxChars = showPricesInFlyer.value ? 33 : 48
-    if (displayName.length > maxChars) displayName = displayName.substring(0, maxChars - 2) + '...'
-    ctx.fillText(displayName, 110, itemY)
+      let priceStr = ''
+      let priceWidth = 0
+      if (showPricesInFlyer.value) {
+        ctx.font = `bold ${priceFontSize}px ${fonts.price}`
+        priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+        priceWidth = ctx.measureText(priceStr).width
+      }
 
-    if (showPricesInFlyer.value) {
-      ctx.textAlign = 'right'
-      ctx.fillStyle = style.priceColor
-      ctx.font = `bold 29px ${fonts.price}`
-      const priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
-      ctx.fillText(priceStr, 970, itemY)
+      ctx.textAlign = 'left'
+      ctx.fillStyle = style.textColor
+      ctx.font = `bold ${dishFontSize}px ${fonts.dish}`
 
-      // Dotted leader line
-      const nameWidth = ctx.measureText(displayName).width
-      const priceWidth = ctx.measureText(priceStr).width
-      const dotStartX = 110 + nameWidth + 15
-      const dotEndX = 970 - priceWidth - 15
-      if (dotEndX > dotStartX) {
-        ctx.beginPath()
-        ctx.setLineDash([4, 6])
-        ctx.strokeStyle = style.leaderColor
-        ctx.lineWidth = 1.5
-        ctx.moveTo(dotStartX, itemY - 7)
-        ctx.lineTo(dotEndX, itemY - 7)
-        ctx.stroke()
-        ctx.setLineDash([])
+      const maxCharsWidth = showPricesInFlyer.value ? (colW - priceWidth - 18) : colW
+      const displayName = fitText(ctx, dish.nombre, maxCharsWidth)
+      ctx.fillText(displayName, colX, itemY)
+
+      if (showPricesInFlyer.value) {
+        ctx.textAlign = 'right'
+        ctx.fillStyle = style.priceColor
+        ctx.font = `bold ${priceFontSize}px ${fonts.price}`
+        ctx.fillText(priceStr, colX + colW, itemY)
+
+        // Dotted leader line
+        ctx.font = `bold ${dishFontSize}px ${fonts.dish}`
+        const nameWidth = ctx.measureText(displayName).width
+        const dotStartX = colX + nameWidth + 12
+        const dotEndX = colX + colW - priceWidth - 12
+        if (dotEndX > dotStartX) {
+          ctx.beginPath()
+          ctx.setLineDash([3, 5])
+          ctx.strokeStyle = style.leaderColor
+          ctx.lineWidth = 1.2
+          ctx.moveTo(dotStartX, itemY - 6)
+          ctx.lineTo(dotEndX, itemY - 6)
+          ctx.stroke()
+          ctx.setLineDash([])
+        }
+      }
+
+      if (showDescriptionsInFlyer.value && dish.descripcion && rowH >= Math.round(75 * scale)) {
+        ctx.textAlign = 'left'
+        ctx.fillStyle = style.descColor
+        ctx.font = `${descFontSize}px ${fonts.desc}`
+        const desc = fitText(ctx, dish.descripcion, colW)
+        ctx.fillText(desc, colX, itemY + descOffset)
       }
     }
+  } else {
+    // Single column for up to 12 dishes
+    const maxRowH = Math.round(105 * Math.max(1, scale * 0.95))
+    const rowHeight = items.length > 0 ? Math.min(maxRowH, Math.floor(availableHeight / items.length)) : 95
 
-    // Description if enabled
-    if (showDescriptionsInFlyer.value && dish.descripcion && rowHeight >= 85) {
+    const dishFontSize = Math.round(27 * scale)
+    const priceFontSize = Math.round(29 * scale)
+    const descFontSize = Math.round(19 * scale)
+    const descOffset = Math.round(28 * Math.max(1, scale * 0.9))
+
+    for (let i = 0; i < items.length; i++) {
+      const dish = items[i]
+      const itemY = currentY + (i * rowHeight)
+
+      if (selectedFrameStyle.value === 'modern_cards') {
+        const cardBg = style.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
+        drawRoundedRect(ctx, 80, itemY - Math.round(32 * Math.min(1.2, scale)), 920, rowHeight - 12, 14)
+        ctx.fillStyle = cardBg
+        ctx.fill()
+      }
+
+      let priceStr = ''
+      let priceWidth = 0
+      if (showPricesInFlyer.value) {
+        ctx.font = `bold ${priceFontSize}px ${fonts.price}`
+        priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+        priceWidth = ctx.measureText(priceStr).width
+      }
+
       ctx.textAlign = 'left'
-      ctx.fillStyle = style.descColor
-      ctx.font = `19px ${fonts.desc}`
-      let desc = dish.descripcion
-      if (desc.length > 62) desc = desc.substring(0, 60) + '...'
-      ctx.fillText(desc, 110, itemY + 28)
+      ctx.fillStyle = style.textColor
+      ctx.font = `bold ${dishFontSize}px ${fonts.dish}`
+
+      const maxCharsWidth = showPricesInFlyer.value ? (970 - priceWidth - 25) - 110 : 860
+      const displayName = fitText(ctx, dish.nombre, maxCharsWidth)
+      ctx.fillText(displayName, 110, itemY)
+
+      if (showPricesInFlyer.value) {
+        ctx.textAlign = 'right'
+        ctx.fillStyle = style.priceColor
+        ctx.font = `bold ${priceFontSize}px ${fonts.price}`
+        ctx.fillText(priceStr, 970, itemY)
+
+        // Dotted leader line
+        ctx.font = `bold ${dishFontSize}px ${fonts.dish}`
+        const nameWidth = ctx.measureText(displayName).width
+        const dotStartX = 110 + nameWidth + 15
+        const dotEndX = 970 - priceWidth - 15
+        if (dotEndX > dotStartX) {
+          ctx.beginPath()
+          ctx.setLineDash([4, 6])
+          ctx.strokeStyle = style.leaderColor
+          ctx.lineWidth = 1.5
+          ctx.moveTo(dotStartX, itemY - 7)
+          ctx.lineTo(dotEndX, itemY - 7)
+          ctx.stroke()
+          ctx.setLineDash([])
+        }
+      }
+
+      // Description if enabled
+      if (showDescriptionsInFlyer.value && dish.descripcion && rowHeight >= Math.round(80 * scale)) {
+        ctx.textAlign = 'left'
+        ctx.fillStyle = style.descColor
+        ctx.font = `${descFontSize}px ${fonts.desc}`
+        const desc = fitText(ctx, dish.descripcion, 860)
+        ctx.fillText(desc, 110, itemY + descOffset)
+      }
     }
   }
 
@@ -746,15 +893,15 @@ async function renderFlyerWhatsApp(cat: Categoria, dishes: Producto[], style: AI
 
   ctx.textAlign = 'center'
   ctx.fillStyle = style.footerText
-  ctx.font = `bold 24px ${fonts.title}`
+  ctx.font = `bold ${Math.round(24 * headerScale)}px ${fonts.title}`
   ctx.fillText('¡VISÍTANOS Y DISFRUTA DE NUESTRA CARTA DIGITAL!', 540, footerY - 5)
 
   ctx.fillStyle = style.footerSub
-  ctx.font = `bold 18px ${fonts.dish}`
+  ctx.font = `bold ${Math.round(18 * headerScale)}px ${fonts.dish}`
   ctx.fillText(businessAddress, 540, footerY + 26)
 
   ctx.fillStyle = style.descColor
-  ctx.font = `16px ${fonts.desc}`
+  ctx.font = `${Math.round(16 * headerScale)}px ${fonts.desc}`
   ctx.fillText('Escanea nuestro código QR en el local • Las Delicias Restobar', 540, footerY + 54)
 
   return canvas
@@ -771,6 +918,9 @@ async function renderFlyerSocial(cat: Categoria, dishes: Producto[], style: AISt
   if (!ctx) throw new Error('Context error')
 
   const fonts = getFontFamilies(selectedFontTheme.value)
+  const scale = flyerFontScale.value
+  const titleScale = 1 + (scale - 1) * 0.4
+  const headerScale = 1 + (scale - 1) * 0.35
 
   // Gradient background
   const bgGrad = ctx.createLinearGradient(0, 0, 0, 1080)
@@ -812,15 +962,15 @@ async function renderFlyerSocial(cat: Categoria, dishes: Producto[], style: AISt
 
     ctx.textAlign = 'left'
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 28px ${fonts.title}`
+    ctx.font = `bold ${Math.round(28 * titleScale)}px ${fonts.title}`
     ctx.fillText('LAS DELICIAS RESTOBAR', 220, 85)
 
     ctx.fillStyle = style.sloganColor
-    ctx.font = `bold 16px ${fonts.slogan}`
+    ctx.font = `bold ${Math.round(16 * headerScale)}px ${fonts.slogan}`
     ctx.fillText(activeSlogan.value, 220, 112)
 
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 32px ${fonts.title}`
+    ctx.font = `bold ${Math.round(32 * titleScale)}px ${fonts.title}`
     ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 220, 155)
 
     currentY = 195
@@ -850,15 +1000,15 @@ async function renderFlyerSocial(cat: Categoria, dishes: Producto[], style: AISt
 
     ctx.textAlign = 'left'
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 28px ${fonts.title}`
+    ctx.font = `bold ${Math.round(28 * titleScale)}px ${fonts.title}`
     ctx.fillText('LAS DELICIAS RESTOBAR', 70, 85)
 
     ctx.fillStyle = style.sloganColor
-    ctx.font = `bold 16px ${fonts.slogan}`
+    ctx.font = `bold ${Math.round(16 * headerScale)}px ${fonts.slogan}`
     ctx.fillText(activeSlogan.value, 70, 112)
 
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 32px ${fonts.title}`
+    ctx.font = `bold ${Math.round(32 * titleScale)}px ${fonts.title}`
     ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 70, 155)
 
     currentY = 195
@@ -889,18 +1039,18 @@ async function renderFlyerSocial(cat: Categoria, dishes: Producto[], style: AISt
     }
 
     ctx.fillStyle = style.sloganColor
-    ctx.font = `bold 18px ${fonts.slogan}`
+    ctx.font = `bold ${Math.round(18 * headerScale)}px ${fonts.slogan}`
     ctx.textAlign = 'center'
     ctx.fillText(activeSlogan.value, 540, currentY)
 
     currentY += 32
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 36px ${fonts.title}`
+    ctx.font = `bold ${Math.round(36 * titleScale)}px ${fonts.title}`
     ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 540, currentY)
 
     currentY += 24
     ctx.fillStyle = style.descColor
-    ctx.font = `16px ${fonts.desc}`
+    ctx.font = `${Math.round(16 * headerScale)}px ${fonts.desc}`
     if (cat.siempre_disponible) {
       ctx.fillText('Servicio Continuo • Todo el Día', 540, currentY)
     } else {
@@ -933,21 +1083,25 @@ async function renderFlyerSocial(cat: Categoria, dishes: Producto[], style: AISt
     ctx.fill()
 
     ctx.textAlign = 'center'
+    ctx.fillStyle = style.promoTagColor
+    ctx.font = `bold ${Math.round(15 * headerScale)}px ${fonts.dish}`
+    ctx.fillText('★ PROMOCIÓN ESPECIAL ★', 540, badgeY + 26)
+
     ctx.fillStyle = style.promoTitleColor
-    ctx.font = `900 32px ${fonts.title}`
-    ctx.fillText(showPricesInFlyer.value ? 'MENÚ DESDE S/ 10' : 'MENÚ EJECUTIVO DEL DÍA', 540, badgeY + 45)
+    ctx.font = `900 ${Math.round(30 * titleScale)}px ${fonts.title}`
+    ctx.fillText('MENÚS DESDE S/ 10', 540, badgeY + 54)
 
     ctx.fillStyle = style.promoSubColor
-    ctx.font = `italic bold 18px ${fonts.slogan}`
-    ctx.fillText('“Buen sabor, buen precio.”', 540, badgeY + 74)
+    ctx.font = `italic bold ${Math.round(16 * headerScale)}px ${fonts.slogan}`
+    ctx.fillText('"¡Buen sabor, buen precio!"', 540, badgeY + 78)
 
     currentY = badgeY + badgeH + 28
   } else {
     currentY += 38
   }
 
-  // 2-Columns grid for compact square
-  const items = dishes.slice(0, isAlmuerzo ? 8 : 10)
+  // 2-Columns grid for compact square: show all dishes of the carta
+  const items = dishes.slice(0, 18)
   const isTwoCol = items.length > 5
 
   if (isTwoCol) {
@@ -956,6 +1110,11 @@ async function renderFlyerSocial(cat: Categoria, dishes: Producto[], style: AISt
     const col1X = 75
     const col2X = 575
     const rowH = Math.min(85, Math.floor((950 - currentY) / colCount))
+
+    const dishFontSize = Math.round(19 * scale)
+    const priceFontSize = Math.round(20 * scale)
+    const descFontSize = Math.round(14 * scale)
+    const descOffset = Math.round(20 * Math.max(1, scale * 0.9))
 
     for (let i = 0; i < items.length; i++) {
       const dish = items[i]
@@ -966,88 +1125,120 @@ async function renderFlyerSocial(cat: Categoria, dishes: Producto[], style: AISt
 
       if (selectedFrameStyle.value === 'modern_cards') {
         const cardBg = style.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
-        drawRoundedRect(ctx, colX - 10, itemY - 24, colW + 20, rowH - 8, 10)
+        drawRoundedRect(ctx, colX - 10, itemY - Math.round(24 * Math.min(1.2, scale)), colW + 20, rowH - 8, 10)
         ctx.fillStyle = cardBg
         ctx.fill()
       }
 
+      let priceStr = ''
+      let priceWidth = 0
+      if (showPricesInFlyer.value) {
+        ctx.font = `bold ${priceFontSize}px ${fonts.price}`
+        priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+        priceWidth = ctx.measureText(priceStr).width
+      }
+
       ctx.textAlign = 'left'
       ctx.fillStyle = style.textColor
-      ctx.font = `bold 19px ${fonts.dish}`
-      let dName = dish.nombre
-      const maxLen = showPricesInFlyer.value ? 22 : 32
-      if (dName.length > maxLen) dName = dName.substring(0, maxLen - 2) + '...'
+      ctx.font = `bold ${dishFontSize}px ${fonts.dish}`
+
+      const maxLen = showPricesInFlyer.value ? (colW - priceWidth - 18) : colW
+      const dName = fitText(ctx, dish.nombre, maxLen)
       ctx.fillText(dName, colX, itemY)
 
       if (showPricesInFlyer.value) {
         ctx.textAlign = 'right'
         ctx.fillStyle = style.priceColor
-        ctx.font = `bold 20px ${fonts.price}`
-        const priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+        ctx.font = `bold ${priceFontSize}px ${fonts.price}`
         ctx.fillText(priceStr, colX + colW, itemY)
 
         // Leader
-        ctx.beginPath()
-        ctx.setLineDash([3, 4])
-        ctx.strokeStyle = style.leaderColor
-        ctx.lineWidth = 1
-        ctx.moveTo(colX + ctx.measureText(dName).width + 10, itemY - 5)
-        ctx.lineTo(colX + colW - ctx.measureText(priceStr).width - 10, itemY - 5)
-        ctx.stroke()
-        ctx.setLineDash([])
+        ctx.font = `bold ${dishFontSize}px ${fonts.dish}`
+        const nameWidth = ctx.measureText(dName).width
+        const dotStart = colX + nameWidth + 10
+        const dotEnd = colX + colW - priceWidth - 10
+        if (dotEnd > dotStart) {
+          ctx.beginPath()
+          ctx.setLineDash([3, 4])
+          ctx.strokeStyle = style.leaderColor
+          ctx.lineWidth = 1
+          ctx.moveTo(dotStart, itemY - 5)
+          ctx.lineTo(dotEnd, itemY - 5)
+          ctx.stroke()
+          ctx.setLineDash([])
+        }
       }
 
-      if (showDescriptionsInFlyer.value && dish.descripcion && rowH >= 65) {
+      if (showDescriptionsInFlyer.value && dish.descripcion && rowH >= Math.round(62 * scale)) {
         ctx.textAlign = 'left'
         ctx.fillStyle = style.descColor
-        ctx.font = `14px ${fonts.desc}`
-        let desc = dish.descripcion
-        if (desc.length > 28) desc = desc.substring(0, 26) + '...'
-        ctx.fillText(desc, colX, itemY + 20)
+        ctx.font = `${descFontSize}px ${fonts.desc}`
+        const desc = fitText(ctx, dish.descripcion, colW)
+        ctx.fillText(desc, colX, itemY + descOffset)
       }
     }
   } else {
     const rowH = Math.min(95, Math.floor((950 - currentY) / Math.max(items.length, 1)))
+    const dishFontSize = Math.round(24 * scale)
+    const priceFontSize = Math.round(26 * scale)
+    const descFontSize = Math.round(16 * scale)
+    const descOffset = Math.round(24 * Math.max(1, scale * 0.9))
+
     for (let i = 0; i < items.length; i++) {
       const dish = items[i]
       const itemY = currentY + (i * rowH)
 
       if (selectedFrameStyle.value === 'modern_cards') {
         const cardBg = style.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
-        drawRoundedRect(ctx, 120, itemY - 26, 840, rowH - 10, 12)
+        drawRoundedRect(ctx, 120, itemY - Math.round(26 * Math.min(1.2, scale)), 840, rowH - 10, 12)
         ctx.fillStyle = cardBg
         ctx.fill()
       }
 
+      let priceStr = ''
+      let priceWidth = 0
+      if (showPricesInFlyer.value) {
+        ctx.font = `bold ${priceFontSize}px ${fonts.price}`
+        priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+        priceWidth = ctx.measureText(priceStr).width
+      }
+
       ctx.textAlign = 'left'
       ctx.fillStyle = style.textColor
-      ctx.font = `bold 24px ${fonts.dish}`
-      ctx.fillText(dish.nombre, 140, itemY)
+      ctx.font = `bold ${dishFontSize}px ${fonts.dish}`
+
+      const maxLen = showPricesInFlyer.value ? (940 - priceWidth - 25) - 140 : 800
+      const dName = fitText(ctx, dish.nombre, maxLen)
+      ctx.fillText(dName, 140, itemY)
 
       if (showPricesInFlyer.value) {
         ctx.textAlign = 'right'
         ctx.fillStyle = style.priceColor
-        ctx.font = `bold 26px ${fonts.price}`
-        const priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+        ctx.font = `bold ${priceFontSize}px ${fonts.price}`
         ctx.fillText(priceStr, 940, itemY)
 
-        ctx.beginPath()
-        ctx.setLineDash([3, 5])
-        ctx.strokeStyle = style.leaderColor
-        ctx.lineWidth = 1.5
-        ctx.moveTo(140 + ctx.measureText(dish.nombre).width + 15, itemY - 6)
-        ctx.lineTo(940 - ctx.measureText(priceStr).width - 15, itemY - 6)
-        ctx.stroke()
-        ctx.setLineDash([])
+        ctx.font = `bold ${dishFontSize}px ${fonts.dish}`
+        const nameWidth = ctx.measureText(dName).width
+        const dotStart = 140 + nameWidth + 15
+        const dotEnd = 940 - priceWidth - 15
+        if (dotEnd > dotStart) {
+          ctx.beginPath()
+          ctx.setLineDash([3, 5])
+          ctx.strokeStyle = style.leaderColor
+          ctx.lineWidth = 1.5
+          ctx.moveTo(dotStart, itemY - 6)
+          ctx.lineTo(dotEnd, itemY - 6)
+          ctx.stroke()
+          ctx.setLineDash([])
+        }
       }
 
-      if (showDescriptionsInFlyer.value && dish.descripcion && rowH >= 75) {
+      if (showDescriptionsInFlyer.value && dish.descripcion && rowH >= Math.round(72 * scale)) {
         ctx.textAlign = 'left'
         ctx.fillStyle = style.descColor
-        ctx.font = `16px ${fonts.desc}`
-        let desc = dish.descripcion
-        if (desc.length > 55) desc = desc.substring(0, 52) + '...'
-        ctx.fillText(desc, 140, itemY + 24)
+        ctx.font = `${descFontSize}px ${fonts.desc}`
+        const desc = fitText(ctx, dish.descripcion, 800)
+        ctx.fillText(desc, 140, itemY + descOffset)
       }
     }
   }
@@ -1057,10 +1248,10 @@ async function renderFlyerSocial(cat: Categoria, dishes: Producto[], style: AISt
   ctx.fillRect(50, 975, 980, 68)
   ctx.textAlign = 'center'
   ctx.fillStyle = style.footerText
-  ctx.font = `bold 16px ${fonts.title}`
+  ctx.font = `bold ${Math.round(16 * headerScale)}px ${fonts.title}`
   ctx.fillText('LAS DELICIAS RESTOBAR  •  SABOR, MÚSICA Y BUENOS MOMENTOS', 540, 1002)
   ctx.fillStyle = style.footerSub
-  ctx.font = `bold 14px ${fonts.dish}`
+  ctx.font = `bold ${Math.round(14 * headerScale)}px ${fonts.dish}`
   ctx.fillText(`${businessAddress}  •  Carta Digital en Vivo`, 540, 1025)
 
   return canvas
@@ -1078,6 +1269,9 @@ async function renderFlyerTV(cat: Categoria, dishes: Producto[], style: AIStyle)
   if (!ctx) throw new Error('Context error')
 
   const fonts = getFontFamilies(selectedFontTheme.value)
+  const scale = flyerFontScale.value
+  const titleScale = 1 + (scale - 1) * 0.4
+  const headerScale = 1 + (scale - 1) * 0.35
 
   // Gradient background
   const bgGrad = ctx.createLinearGradient(0, 0, 1920, 1080)
@@ -1124,55 +1318,55 @@ async function renderFlyerTV(cat: Categoria, dishes: Producto[], style: AIStyle)
   if (selectedLogoPosition.value === 'left') {
     ctx.textAlign = 'left'
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 44px ${fonts.title}`
+    ctx.font = `bold ${Math.round(44 * titleScale)}px ${fonts.title}`
     ctx.fillText('LAS DELICIAS RESTOBAR', 245, 100)
 
     ctx.fillStyle = style.sloganColor
-    ctx.font = `bold 22px ${fonts.slogan}`
+    ctx.font = `bold ${Math.round(22 * headerScale)}px ${fonts.slogan}`
     ctx.fillText(activeSlogan.value, 245, 138)
 
     ctx.textAlign = 'right'
     ctx.fillStyle = style.titleColor
-    ctx.font = `900 38px ${fonts.title}`
+    ctx.font = `900 ${Math.round(38 * titleScale)}px ${fonts.title}`
     ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 1835, 105)
 
     ctx.fillStyle = style.descColor
-    ctx.font = `19px ${fonts.desc}`
+    ctx.font = `${Math.round(19 * headerScale)}px ${fonts.desc}`
     ctx.fillText(cat.siempre_disponible ? 'Servicio Continuo 24/7' : `Horario: ${cat.hora_inicio.substring(0, 5)} - ${cat.hora_fin.substring(0, 5)} hrs`, 1835, 142)
   } else if (selectedLogoPosition.value === 'right') {
     ctx.textAlign = 'left'
     ctx.fillStyle = style.titleColor
-    ctx.font = `900 38px ${fonts.title}`
+    ctx.font = `900 ${Math.round(38 * titleScale)}px ${fonts.title}`
     ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 85, 105)
 
     ctx.fillStyle = style.descColor
-    ctx.font = `19px ${fonts.desc}`
+    ctx.font = `${Math.round(19 * headerScale)}px ${fonts.desc}`
     ctx.fillText(cat.siempre_disponible ? 'Servicio Continuo 24/7' : `Horario: ${cat.hora_inicio.substring(0, 5)} - ${cat.hora_fin.substring(0, 5)} hrs`, 85, 142)
 
     ctx.textAlign = 'right'
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 44px ${fonts.title}`
+    ctx.font = `bold ${Math.round(44 * titleScale)}px ${fonts.title}`
     ctx.fillText('LAS DELICIAS RESTOBAR', logoX - 30, 100)
 
     ctx.fillStyle = style.sloganColor
-    ctx.font = `bold 22px ${fonts.slogan}`
+    ctx.font = `bold ${Math.round(22 * headerScale)}px ${fonts.slogan}`
     ctx.fillText(activeSlogan.value, logoX - 30, 138)
   } else {
     // Center or badge
     ctx.textAlign = 'left'
     ctx.fillStyle = style.titleColor
-    ctx.font = `bold 38px ${fonts.title}`
+    ctx.font = `bold ${Math.round(38 * titleScale)}px ${fonts.title}`
     ctx.fillText('LAS DELICIAS RESTOBAR', 85, 105)
     ctx.fillStyle = style.sloganColor
-    ctx.font = `bold 20px ${fonts.slogan}`
+    ctx.font = `bold ${Math.round(20 * headerScale)}px ${fonts.slogan}`
     ctx.fillText(activeSlogan.value, 85, 142)
 
     ctx.textAlign = 'right'
     ctx.fillStyle = style.titleColor
-    ctx.font = `900 38px ${fonts.title}`
+    ctx.font = `900 ${Math.round(38 * titleScale)}px ${fonts.title}`
     ctx.fillText(`CARTA DE ${cat.nombre.toUpperCase()}`, 1835, 105)
     ctx.fillStyle = style.descColor
-    ctx.font = `19px ${fonts.desc}`
+    ctx.font = `${Math.round(19 * headerScale)}px ${fonts.desc}`
     ctx.fillText(cat.siempre_disponible ? 'Servicio Continuo 24/7' : `Horario: ${cat.hora_inicio.substring(0, 5)} - ${cat.hora_fin.substring(0, 5)} hrs`, 1835, 142)
   }
 
@@ -1191,7 +1385,7 @@ async function renderFlyerTV(cat: Categoria, dishes: Producto[], style: AIStyle)
 
   // Promo Banner (Almuerzo TV)
   const isAlmuerzo = (cat.nombre || '').toLowerCase().includes('almuerzo')
-  let contentStartY = 265
+  let contentStartY = 270
 
   if (isAlmuerzo) {
     const promoY = 222
@@ -1214,24 +1408,24 @@ async function renderFlyerTV(cat: Categoria, dishes: Producto[], style: AIStyle)
 
     ctx.textAlign = 'left'
     ctx.fillStyle = style.promoTagColor
-    ctx.font = `bold 16px ${fonts.dish}`
+    ctx.font = `bold ${Math.round(16 * headerScale)}px ${fonts.dish}`
     ctx.fillText('★ PROMOCIÓN ESPECIAL DE ALMUERZO ★', promoX + 30, promoY + 42)
 
     ctx.textAlign = 'center'
     ctx.fillStyle = style.promoTitleColor
-    ctx.font = `900 32px ${fonts.title}`
-    ctx.fillText(showPricesInFlyer.value ? 'MENÚ DESDE S/ 10' : 'MENÚ EJECUTIVO DEL DÍA', 960, promoY + 44)
+    ctx.font = `900 ${Math.round(32 * titleScale)}px ${fonts.title}`
+    ctx.fillText('MENÚS DESDE S/ 10', 960, promoY + 44)
 
     ctx.textAlign = 'right'
     ctx.fillStyle = style.promoSubColor
-    ctx.font = `italic bold 20px ${fonts.slogan}`
-    ctx.fillText('“Buen sabor, buen precio.”', promoX + promoW - 30, promoY + 42)
+    ctx.font = `italic bold ${Math.round(20 * headerScale)}px ${fonts.slogan}`
+    ctx.fillText('"¡Buen sabor, buen precio!"', promoX + promoW - 30, promoY + 42)
 
-    contentStartY = 320
+    contentStartY = 350
   }
 
   // Two columns of dishes
-  const maxDishes = isAlmuerzo ? 12 : 14
+  const maxDishes = 24
   const items = dishes.slice(0, maxDishes)
   const colCount = Math.ceil(items.length / 2)
 
@@ -1239,7 +1433,12 @@ async function renderFlyerTV(cat: Categoria, dishes: Producto[], style: AIStyle)
   const col1X = 85
   const col2X = 1015
   const maxAvailableH = 960 - contentStartY
-  const rowH = colCount > 0 ? Math.min(100, Math.floor(maxAvailableH / colCount)) : 90
+  const rowH = colCount > 0 ? Math.min(115, Math.floor(maxAvailableH / colCount)) : 90
+
+  const dishFontSize = Math.round(26 * scale)
+  const priceFontSize = Math.round(28 * scale)
+  const descFontSize = Math.round(20 * scale)
+  const descOffset = Math.round(28 * Math.max(1, scale * 0.9))
 
   for (let i = 0; i < items.length; i++) {
     const dish = items[i]
@@ -1250,28 +1449,35 @@ async function renderFlyerTV(cat: Categoria, dishes: Producto[], style: AIStyle)
 
     if (selectedFrameStyle.value === 'modern_cards') {
       const cardBg = style.isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
-      drawRoundedRect(ctx, colX - 15, itemY - 26, colW + 30, rowH - 8, 12)
+      drawRoundedRect(ctx, colX - 15, itemY - Math.round(26 * Math.min(1.2, scale)), colW + 30, rowH - 8, 12)
       ctx.fillStyle = cardBg
       ctx.fill()
     }
 
+    let priceStr = ''
+    let priceWidth = 0
+    if (showPricesInFlyer.value) {
+      ctx.font = `bold ${priceFontSize}px ${fonts.price}`
+      priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+      priceWidth = ctx.measureText(priceStr).width
+    }
+
     ctx.textAlign = 'left'
     ctx.fillStyle = style.textColor
-    ctx.font = `bold 26px ${fonts.dish}`
-    let dName = dish.nombre
-    const maxLen = showPricesInFlyer.value ? 35 : 48
-    if (dName.length > maxLen) dName = dName.substring(0, maxLen - 2) + '...'
+    ctx.font = `bold ${dishFontSize}px ${fonts.dish}`
+
+    const maxLen = showPricesInFlyer.value ? (colW - priceWidth - 25) : colW
+    const dName = fitText(ctx, dish.nombre, maxLen)
     ctx.fillText(dName, colX, itemY)
 
     if (showPricesInFlyer.value) {
       ctx.textAlign = 'right'
       ctx.fillStyle = style.priceColor
-      ctx.font = `bold 28px ${fonts.price}`
-      const priceStr = `S/ ${Number(dish.precio).toFixed(2)}`
+      ctx.font = `bold ${priceFontSize}px ${fonts.price}`
       ctx.fillText(priceStr, colX + colW, itemY)
 
+      ctx.font = `bold ${dishFontSize}px ${fonts.dish}`
       const nameWidth = ctx.measureText(dName).width
-      const priceWidth = ctx.measureText(priceStr).width
       const dotStart = colX + nameWidth + 16
       const dotEnd = colX + colW - priceWidth - 16
       if (dotEnd > dotStart) {
@@ -1286,13 +1492,12 @@ async function renderFlyerTV(cat: Categoria, dishes: Producto[], style: AIStyle)
       }
     }
 
-    if (showDescriptionsInFlyer.value && dish.descripcion && rowH >= 85) {
+    if (showDescriptionsInFlyer.value && dish.descripcion && rowH >= Math.round(80 * scale)) {
       ctx.textAlign = 'left'
       ctx.fillStyle = style.descColor
-      ctx.font = `20px ${fonts.desc}`
-      let desc = dish.descripcion
-      if (desc.length > 54) desc = desc.substring(0, 51) + '...'
-      ctx.fillText(desc, colX, itemY + 28)
+      ctx.font = `${descFontSize}px ${fonts.desc}`
+      const desc = fitText(ctx, dish.descripcion, colW - 20)
+      ctx.fillText(desc, colX, itemY + descOffset)
     }
   }
 
@@ -1302,7 +1507,7 @@ async function renderFlyerTV(cat: Categoria, dishes: Producto[], style: AIStyle)
 
   ctx.textAlign = 'center'
   ctx.fillStyle = style.footerText
-  ctx.font = `bold 20px ${fonts.title}`
+  ctx.font = `bold ${Math.round(20 * headerScale)}px ${fonts.title}`
   ctx.fillText(
     `LAS DELICIAS RESTOBAR  •  ${businessAddress}  •  CARTA DIGITAL EN VIVO`,
     960,
@@ -1313,7 +1518,7 @@ async function renderFlyerTV(cat: Categoria, dishes: Producto[], style: AIStyle)
 }
 
 async function renderFlyerCanvas(cat: Categoria, format: FlyerFormat, style: AIStyle): Promise<HTMLCanvasElement> {
-  const catDishes = products.value.filter(p => p.categoria_id === cat.id && p.disponible)
+  const catDishes = getDishesForCategory(cat.id)
 
   if (format === 'tv') {
     return renderFlyerTV(cat, catDishes, style)
@@ -1367,32 +1572,46 @@ async function downloadFlyerForCategory(cat: Categoria) {
   }
 }
 
-// Re-generate preview whenever any layout or content parameter changes
+// Re-generate preview whenever any layout, font size, content parameter, or products change
 watch([
   selectedCategoryId,
   selectedFormat,
   selectedAiStyleId,
   showDescriptionsInFlyer,
   showPricesInFlyer,
+  showOnlyAvailableInFlyer,
   selectedLogoPosition,
   selectedFontTheme,
-  selectedFrameStyle
+  selectedFrameStyle,
+  flyerFontScale,
+  products,
+  categories
 ], () => {
   generatePreview()
-})
+}, { deep: true })
 
 onMounted(async () => {
   if (categories.value.length > 0) {
-    selectedCategoryId.value = categories.value[0].id
+    if (!selectedCategoryId.value) {
+      selectedCategoryId.value = categories.value[0].id
+    }
     await generatePreview()
   }
 })
+
+watch(categories, (cats) => {
+  if (cats.length > 0 && !selectedCategoryId.value) {
+    selectedCategoryId.value = cats[0].id
+    generatePreview()
+  }
+}, { immediate: true })
 </script>
 
 <template>
   <div class="space-y-4">
     <!-- Header: Compact Bar with Slogan and Direct AI Randomizer Button -->
-    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div
+      class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div>
         <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
           <SparklesIcon class="w-5 h-5 text-brand-primary" />
@@ -1404,15 +1623,13 @@ onMounted(async () => {
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <div class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-brand-primary bg-orange-50 px-3 py-1.5 rounded-xl border border-orange-200">
+        <div
+          class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-brand-primary bg-orange-50 px-3 py-1.5 rounded-xl border border-orange-200">
           <span>{{ activeSlogan }}</span>
         </div>
 
-        <button
-          type="button"
-          @click="generateNovelDesignVariation"
-          class="btn btn-sm bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-700 text-white border-none rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
-        >
+        <button type="button" @click="generateNovelDesignVariation"
+          class="btn btn-sm bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-700 text-white border-none rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer">
           <SparklesIcon class="w-4 h-4 text-amber-300 animate-spin" />
           <span>✨ Nuevo Diseño del Día (IA)</span>
         </button>
@@ -1421,10 +1638,8 @@ onMounted(async () => {
 
     <!-- AI Notification Toast -->
     <transition name="fade">
-      <div
-        v-if="aiGenerationToast"
-        class="px-4 py-2.5 rounded-xl bg-purple-900 text-purple-100 text-xs flex items-center justify-between shadow-md border border-purple-700"
-      >
+      <div v-if="aiGenerationToast"
+        class="px-4 py-2.5 rounded-xl bg-purple-900 text-purple-100 text-xs flex items-center justify-between shadow-md border border-purple-700">
         <div class="flex items-center gap-2">
           <SparklesIcon class="w-4 h-4 text-amber-300" />
           <span><strong>Diseño Aplicado:</strong> {{ aiGenerationToast }}</span>
@@ -1435,25 +1650,19 @@ onMounted(async () => {
 
     <!-- Mobile View Switcher (Only on screens < lg) -->
     <div class="lg:hidden bg-slate-100 p-1 rounded-2xl flex items-center gap-1 shadow-2xs">
-      <button
-        type="button"
-        @click="activeMobileTab = 'preview'"
+      <button type="button" @click="activeMobileTab = 'preview'"
         class="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px]"
-        :class="activeMobileTab === 'preview' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-      >
+        :class="activeMobileTab === 'preview' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'">
         <EyeIcon class="w-4 h-4 text-brand-primary" />
         <span>👁️ Ver Flyer</span>
         <span class="text-[10px] px-1.5 py-0.5 rounded bg-brand-primary/10 text-brand-primary uppercase font-mono">
-          {{ formatOptions.find(f => f.id === selectedFormat)?.name.split(' ')[0] }}
+          {{formatOptions.find(f => f.id === selectedFormat)?.name.split(' ')[0]}}
         </span>
       </button>
 
-      <button
-        type="button"
-        @click="activeMobileTab = 'controls'"
+      <button type="button" @click="activeMobileTab = 'controls'"
         class="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px]"
-        :class="activeMobileTab === 'controls' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-      >
+        :class="activeMobileTab === 'controls' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'">
         <AdjustmentsHorizontalIcon class="w-4 h-4 text-purple-600" />
         <span>⚙️ Ajustes & Estilo</span>
       </button>
@@ -1461,29 +1670,25 @@ onMounted(async () => {
 
     <!-- MAIN TWO-COLUMN RESPONSIVE LAYOUT -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-      
+
       <!-- ============================================== -->
       <!-- LEFT COLUMN: COMPACT ACCORDION CONTROLS        -->
       <!-- ============================================== -->
-      <div
-        class="lg:col-span-5 space-y-3.5"
-        :class="activeMobileTab === 'controls' ? 'block' : 'hidden lg:block'"
-      >
+      <div class="lg:col-span-5 space-y-3.5" :class="activeMobileTab === 'controls' ? 'block' : 'hidden lg:block'">
 
         <!-- ACCORDION 1: FORMAT & CARTA SELECTION -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <button
-            type="button"
-            @click="toggleAccordion('format')"
-            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer"
-          >
+          <button type="button" @click="toggleAccordion('format')"
+            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer">
             <div class="flex items-center gap-2 text-left">
-              <span class="w-6 h-6 rounded-lg bg-orange-100 text-brand-primary flex items-center justify-center text-xs font-bold">1</span>
+              <span
+                class="w-6 h-6 rounded-lg bg-orange-100 text-brand-primary flex items-center justify-center text-xs font-bold">1</span>
               <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Formato y Carta</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                {{ formatOptions.find(f => f.id === selectedFormat)?.name.split(' ')[0] }} • {{ currentCategory?.nombre }}
+                {{formatOptions.find(f => f.id === selectedFormat)?.name.split(' ')[0]}} • {{ currentCategory?.nombre
+                }}
               </span>
               <component :is="accordions.format ? ChevronUpIcon : ChevronDownIcon" class="w-4 h-4 text-slate-400" />
             </div>
@@ -1494,20 +1699,13 @@ onMounted(async () => {
             <div>
               <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Medio / Resolución:</label>
               <div class="grid grid-cols-3 gap-2">
-                <button
-                  v-for="opt in formatOptions"
-                  :key="opt.id"
-                  type="button"
-                  @click="selectedFormat = opt.id"
+                <button v-for="opt in formatOptions" :key="opt.id" type="button" @click="selectedFormat = opt.id"
                   class="p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer min-h-[52px]"
-                  :class="selectedFormat === opt.id ? 'bg-orange-50/80 border-brand-primary ring-2 ring-brand-primary/10 shadow-2xs' : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100'"
-                >
-                  <component
-                    :is="opt.icon"
-                    class="w-5 h-5"
-                    :class="selectedFormat === opt.id ? 'text-brand-primary' : 'text-slate-500'"
-                  />
-                  <span class="text-xs font-bold leading-tight" :class="selectedFormat === opt.id ? 'text-brand-primary' : 'text-slate-700'">
+                  :class="selectedFormat === opt.id ? 'bg-orange-50/80 border-brand-primary ring-2 ring-brand-primary/10 shadow-2xs' : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100'">
+                  <component :is="opt.icon" class="w-5 h-5"
+                    :class="selectedFormat === opt.id ? 'text-brand-primary' : 'text-slate-500'" />
+                  <span class="text-xs font-bold leading-tight"
+                    :class="selectedFormat === opt.id ? 'text-brand-primary' : 'text-slate-700'">
                     {{ opt.id === 'whatsapp' ? 'WhatsApp' : opt.id === 'social' ? 'Redes 1:1' : 'TV 16:9' }}
                   </span>
                   <span class="text-[9px] font-mono text-slate-400 font-semibold">
@@ -1521,23 +1719,15 @@ onMounted(async () => {
             <div>
               <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Carta para el flyer:</label>
               <div class="grid grid-cols-2 gap-2">
-                <button
-                  v-for="cat in mainCartas"
-                  :key="cat.id"
-                  type="button"
-                  @click="selectedCategoryId = cat.id"
+                <button v-for="cat in mainCartas" :key="cat.id" type="button" @click="selectedCategoryId = cat.id"
                   class="p-2 rounded-xl border text-left transition-all flex items-center gap-2 cursor-pointer"
-                  :class="selectedCategoryId === cat.id ? 'bg-slate-900 text-white border-slate-900 shadow-2xs font-bold' : 'bg-slate-50/60 text-slate-700 border-slate-200 hover:bg-slate-100'"
-                >
-                  <component
-                    :is="getCategoryIcon(cat.nombre, cat.siempre_disponible)"
-                    class="w-4 h-4 shrink-0"
-                    :class="selectedCategoryId === cat.id ? 'text-amber-300' : 'text-brand-primary'"
-                  />
+                  :class="selectedCategoryId === cat.id ? 'bg-slate-900 text-white border-slate-900 shadow-2xs font-bold' : 'bg-slate-50/60 text-slate-700 border-slate-200 hover:bg-slate-100'">
+                  <component :is="getCategoryIcon(cat.nombre, cat.siempre_disponible)" class="w-4 h-4 shrink-0"
+                    :class="selectedCategoryId === cat.id ? 'text-amber-300' : 'text-brand-primary'" />
                   <div class="min-w-0 flex-1">
                     <div class="text-xs font-bold truncate">{{ cat.nombre }}</div>
                     <div class="text-[10px] opacity-75 font-normal">
-                      {{ products.filter(p => p.categoria_id === cat.id && p.disponible).length }} platos
+                      {{ getDishesForCategory(cat.id).length }} platos
                     </div>
                   </div>
                 </button>
@@ -1548,20 +1738,16 @@ onMounted(async () => {
 
         <!-- ACCORDION 2: PRICES & CONTENT VISIBILITY (Key User Request) -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <button
-            type="button"
-            @click="toggleAccordion('content')"
-            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer"
-          >
+          <button type="button" @click="toggleAccordion('content')"
+            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer">
             <div class="flex items-center gap-2 text-left">
-              <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">2</span>
+              <span
+                class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">2</span>
               <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Precios y Contenido</span>
             </div>
             <div class="flex items-center gap-2">
-              <span
-                class="text-[10px] font-bold px-2 py-0.5 rounded"
-                :class="showPricesInFlyer ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'"
-              >
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded"
+                :class="showPricesInFlyer ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'">
                 {{ showPricesInFlyer ? '💰 Precios Visibles' : 'Precios Ocultos' }}
               </span>
               <component :is="accordions.content ? ChevronUpIcon : ChevronDownIcon" class="w-4 h-4 text-slate-400" />
@@ -1571,10 +1757,10 @@ onMounted(async () => {
           <div v-show="accordions.content" class="p-4 space-y-3">
             <!-- Show/Hide Prices Main Toggle (Requested Requirement) -->
             <label class="flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer"
-              :class="showPricesInFlyer ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200' : 'bg-slate-50 border-slate-200'"
-            >
+              :class="showPricesInFlyer ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200' : 'bg-slate-50 border-slate-200'">
               <div class="flex items-start gap-2.5 mr-2">
-                <TagIcon class="w-5 h-5 shrink-0 mt-0.5" :class="showPricesInFlyer ? 'text-emerald-600' : 'text-slate-400'" />
+                <TagIcon class="w-5 h-5 shrink-0 mt-0.5"
+                  :class="showPricesInFlyer ? 'text-emerald-600' : 'text-slate-400'" />
                 <div>
                   <div class="text-xs font-bold text-slate-900">Mostrar precios en el flyer</div>
                   <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">
@@ -1584,15 +1770,12 @@ onMounted(async () => {
                   </p>
                 </div>
               </div>
-              <input
-                type="checkbox"
-                v-model="showPricesInFlyer"
-                class="toggle toggle-md toggle-success shrink-0"
-              />
+              <input type="checkbox" v-model="showPricesInFlyer" class="toggle toggle-md toggle-success shrink-0" />
             </label>
 
             <!-- Show/Hide Descriptions Toggle -->
-            <label class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/80 transition-all cursor-pointer">
+            <label
+              class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/80 transition-all cursor-pointer">
               <div class="flex items-start gap-2.5 mr-2">
                 <DocumentTextIcon class="w-5 h-5 shrink-0 mt-0.5 text-brand-primary" />
                 <div>
@@ -1602,15 +1785,31 @@ onMounted(async () => {
                   </p>
                 </div>
               </div>
-              <input
-                type="checkbox"
-                v-model="showDescriptionsInFlyer"
-                class="toggle toggle-sm toggle-primary shrink-0"
-              />
+              <input type="checkbox" v-model="showDescriptionsInFlyer"
+                class="toggle toggle-sm toggle-primary shrink-0" />
+            </label>
+
+            <!-- Filter Availability Toggle -->
+            <label
+              class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/80 transition-all cursor-pointer">
+              <div class="flex items-start gap-2.5 mr-2">
+                <CheckCircleIcon class="w-5 h-5 shrink-0 mt-0.5 text-emerald-600" />
+                <div>
+                  <div class="text-xs font-bold text-slate-900">Filtrar solo platos disponibles</div>
+                  <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                    {{ showOnlyAvailableInFlyer
+                      ? 'Mostrando únicamente platos con disponibilidad activa hoy.'
+                      : 'Mostrando la carta completa con todos los platos registrados.' }}
+                  </p>
+                </div>
+              </div>
+              <input type="checkbox" v-model="showOnlyAvailableInFlyer"
+                class="toggle toggle-sm toggle-primary shrink-0" />
             </label>
 
             <!-- Local Address Badge -->
-            <div class="flex items-center gap-2 text-xs text-slate-600 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200">
+            <div
+              class="flex items-center gap-2 text-xs text-slate-600 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200">
               <MapPinIcon class="w-4 h-4 text-brand-primary shrink-0" />
               <div class="text-[11px]">
                 Dirección en el pie: <strong class="text-slate-800">{{ businessAddress }}</strong>
@@ -1621,13 +1820,11 @@ onMounted(async () => {
 
         <!-- ACCORDION 3: NOVEL AI DESIGN ENGINE (Logo, Fonts, Frame & Palettes) -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <button
-            type="button"
-            @click="toggleAccordion('style')"
-            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer"
-          >
+          <button type="button" @click="toggleAccordion('style')"
+            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer">
             <div class="flex items-center gap-2 text-left">
-              <span class="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">3</span>
+              <span
+                class="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">3</span>
               <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Estilo del Día & IA</span>
             </div>
             <div class="flex items-center gap-2">
@@ -1640,11 +1837,8 @@ onMounted(async () => {
 
           <div v-show="accordions.style" class="p-4 space-y-3.5">
             <!-- Randomizer Button -->
-            <button
-              type="button"
-              @click="generateNovelDesignVariation"
-              class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer min-h-[44px]"
-            >
+            <button type="button" @click="generateNovelDesignVariation"
+              class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer min-h-[44px]">
               <SparklesIcon class="w-4 h-4 text-amber-300 animate-spin" />
               <span>Generar Nuevo Diseño Aleatorio (IA)</span>
             </button>
@@ -1653,14 +1847,10 @@ onMounted(async () => {
             <div>
               <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Posición del Logo:</label>
               <div class="grid grid-cols-4 gap-1.5">
-                <button
-                  type="button"
-                  v-for="pos in (['center', 'left', 'right', 'badge'] as LogoPosition[])"
-                  :key="pos"
+                <button type="button" v-for="pos in (['center', 'left', 'right', 'badge'] as LogoPosition[])" :key="pos"
                   @click="selectedLogoPosition = pos"
                   class="py-1.5 px-1 rounded-lg text-xs font-medium text-center transition-all cursor-pointer"
-                  :class="selectedLogoPosition === pos ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
-                >
+                  :class="selectedLogoPosition === pos ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
                   {{ pos === 'center' ? 'Centro' : pos === 'left' ? 'Izq.' : pos === 'right' ? 'Der.' : 'Badge' }}
                 </button>
               </div>
@@ -1670,37 +1860,63 @@ onMounted(async () => {
             <div>
               <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Familia Tipográfica:</label>
               <div class="grid grid-cols-2 gap-1.5">
-                <button
-                  type="button"
-                  @click="selectedFontTheme = 'serif'"
+                <button type="button" @click="selectedFontTheme = 'serif'"
                   class="py-1.5 px-2 rounded-lg text-xs font-serif text-center transition-all cursor-pointer"
-                  :class="selectedFontTheme === 'serif' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
-                >
+                  :class="selectedFontTheme === 'serif' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
                   Playfair Serif
                 </button>
-                <button
-                  type="button"
-                  @click="selectedFontTheme = 'sans'"
+                <button type="button" @click="selectedFontTheme = 'sans'"
                   class="py-1.5 px-2 rounded-lg text-xs font-sans text-center transition-all cursor-pointer"
-                  :class="selectedFontTheme === 'sans' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
-                >
+                  :class="selectedFontTheme === 'sans' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
                   Outfit Sans
                 </button>
-                <button
-                  type="button"
-                  @click="selectedFontTheme = 'condensed'"
+                <button type="button" @click="selectedFontTheme = 'condensed'"
                   class="py-1.5 px-2 rounded-lg text-xs font-medium text-center transition-all cursor-pointer"
-                  :class="selectedFontTheme === 'condensed' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
-                >
+                  :class="selectedFontTheme === 'condensed' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
                   Bistró Impact
                 </button>
-                <button
-                  type="button"
-                  @click="selectedFontTheme = 'editorial'"
+                <button type="button" @click="selectedFontTheme = 'editorial'"
                   class="py-1.5 px-2 rounded-lg text-xs font-serif text-center transition-all cursor-pointer"
-                  :class="selectedFontTheme === 'editorial' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
-                >
+                  :class="selectedFontTheme === 'editorial' ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
                   Editorial
+                </button>
+              </div>
+            </div>
+
+            <!-- Typography Font Size Selector (Aumentar / Reducir Tamaño de Letra) -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-[11px] font-bold text-slate-600 uppercase">Tamaño de Letra:</label>
+                <span
+                  class="text-[11px] font-bold text-purple-700 font-mono bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded">
+                  {{ Math.round(flyerFontScale * 100) }}%
+                </span>
+              </div>
+
+              <!-- Preset buttons -->
+              <div class="grid grid-cols-4 gap-1.5 mb-2">
+                <button v-for="preset in fontScalePresets" :key="preset.id" type="button"
+                  @click="flyerFontScale = preset.scale"
+                  class="py-1.5 px-1 rounded-lg text-xs font-medium text-center transition-all cursor-pointer"
+                  :class="Math.abs(flyerFontScale - preset.scale) < 0.03 ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
+                  <div class="font-bold">{{ preset.label }}</div>
+                  <div class="text-[9px] opacity-75">{{ preset.pct }}</div>
+                </button>
+              </div>
+
+              <!-- Stepper / Range Slider -->
+              <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                <button type="button" @click="adjustFontScale(-0.05)" :disabled="flyerFontScale <= 0.9"
+                  class="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-700 disabled:opacity-40 cursor-pointer shadow-2xs"
+                  title="Disminuir tamaño de letra">
+                  A-
+                </button>
+                <input type="range" min="0.9" max="1.5" step="0.05" v-model.number="flyerFontScale"
+                  class="range range-xs range-primary flex-1 cursor-pointer" />
+                <button type="button" @click="adjustFontScale(0.05)" :disabled="flyerFontScale >= 1.5"
+                  class="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-700 disabled:opacity-40 cursor-pointer shadow-2xs"
+                  title="Aumentar tamaño de letra">
+                  A+
                 </button>
               </div>
             </div>
@@ -1709,19 +1925,14 @@ onMounted(async () => {
             <div>
               <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Estilo de Marco:</label>
               <div class="grid grid-cols-2 gap-1.5">
-                <button
-                  type="button"
-                  v-for="fr in ([
-                    { id: 'double', label: 'Doble Clásico' },
-                    { id: 'modern_cards', label: 'Tarjetas' },
-                    { id: 'minimal_lines', label: 'Minimal' },
-                    { id: 'ornamental', label: 'Ornamental' }
-                  ] as { id: FrameStyle; label: string }[])"
-                  :key="fr.id"
-                  @click="selectedFrameStyle = fr.id"
+                <button type="button" v-for="fr in ([
+                  { id: 'double', label: 'Doble Clásico' },
+                  { id: 'modern_cards', label: 'Tarjetas' },
+                  { id: 'minimal_lines', label: 'Minimal' },
+                  { id: 'ornamental', label: 'Ornamental' }
+                ] as { id: FrameStyle; label: string }[])" :key="fr.id" @click="selectedFrameStyle = fr.id"
                   class="py-1.5 px-2 rounded-lg text-xs font-medium text-center transition-all cursor-pointer"
-                  :class="selectedFrameStyle === fr.id ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
-                >
+                  :class="selectedFrameStyle === fr.id ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
                   {{ fr.label }}
                 </button>
               </div>
@@ -1731,24 +1942,23 @@ onMounted(async () => {
             <div>
               <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1.5">Paletas de Colores:</label>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  v-for="st in aiStyles"
-                  :key="st.id"
-                  type="button"
-                  @click="selectedAiStyleId = st.id"
+                <button v-for="st in aiStyles" :key="st.id" type="button" @click="selectedAiStyleId = st.id"
                   class="p-2 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer"
-                  :class="selectedAiStyleId === st.id ? 'border-purple-600 ring-2 ring-purple-100 bg-purple-50/40 shadow-xs' : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'"
-                >
+                  :class="selectedAiStyleId === st.id ? 'border-purple-600 ring-2 ring-purple-100 bg-purple-50/40 shadow-xs' : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'">
                   <div class="min-w-0 pr-2">
                     <div class="text-[11px] font-bold text-slate-900 truncate">{{ st.name }}</div>
-                    <span class="text-[9px] uppercase px-1 py-0.2 rounded" :class="st.isDark ? 'bg-slate-900 text-amber-300 font-bold' : 'bg-orange-100 text-orange-800'">
+                    <span class="text-[9px] uppercase px-1 py-0.2 rounded"
+                      :class="st.isDark ? 'bg-slate-900 text-amber-300 font-bold' : 'bg-orange-100 text-orange-800'">
                       {{ st.badge }}
                     </span>
                   </div>
                   <div class="flex items-center gap-1 shrink-0">
-                    <span class="w-3 h-3 rounded-full border border-slate-300" :style="{ backgroundColor: st.bgGrad[1] }"></span>
-                    <span class="w-3 h-3 rounded-full border border-slate-300" :style="{ backgroundColor: st.innerBorder }"></span>
-                    <span class="w-3 h-3 rounded-full border border-slate-300" :style="{ backgroundColor: st.priceColor }"></span>
+                    <span class="w-3 h-3 rounded-full border border-slate-300"
+                      :style="{ backgroundColor: st.bgGrad[1] }"></span>
+                    <span class="w-3 h-3 rounded-full border border-slate-300"
+                      :style="{ backgroundColor: st.innerBorder }"></span>
+                    <span class="w-3 h-3 rounded-full border border-slate-300"
+                      :style="{ backgroundColor: st.priceColor }"></span>
                   </div>
                 </button>
               </div>
@@ -1758,13 +1968,11 @@ onMounted(async () => {
 
         <!-- ACCORDION 4: DIRECT DOWNLOADS PER MEAL (Desayuno, Almuerzo, Cena, Bar) -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <button
-            type="button"
-            @click="toggleAccordion('downloads')"
-            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer"
-          >
+          <button type="button" @click="toggleAccordion('downloads')"
+            class="w-full px-4 py-3 bg-white hover:bg-slate-50/80 flex items-center justify-between border-b border-slate-100 transition-colors cursor-pointer">
             <div class="flex items-center gap-2 text-left">
-              <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">4</span>
+              <span
+                class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">4</span>
               <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Descargas Rápidas</span>
             </div>
             <div class="flex items-center gap-2">
@@ -1774,27 +1982,21 @@ onMounted(async () => {
           </button>
 
           <div v-show="accordions.downloads" class="p-3 space-y-2">
-            <div
-              v-for="cat in mainCartas"
-              :key="cat.id"
-              class="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/70 transition-colors"
-            >
+            <div v-for="cat in mainCartas" :key="cat.id"
+              class="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/70 transition-colors">
               <div class="flex items-center gap-2 min-w-0 mr-2">
-                <component :is="getCategoryIcon(cat.nombre, cat.siempre_disponible)" class="w-4 h-4 text-brand-primary shrink-0" />
+                <component :is="getCategoryIcon(cat.nombre, cat.siempre_disponible)"
+                  class="w-4 h-4 text-brand-primary shrink-0" />
                 <div class="truncate">
                   <span class="text-xs font-bold text-slate-900 block">{{ cat.nombre }}</span>
                   <span class="text-[10px] text-slate-500">
-                    {{ products.filter(p => p.categoria_id === cat.id && p.disponible).length }} platos
+                    {{ getDishesForCategory(cat.id).length }} platos
                   </span>
                 </div>
               </div>
 
-              <button
-                type="button"
-                @click="downloadFlyerForCategory(cat)"
-                :disabled="downloadingCatId === cat.id"
-                class="btn btn-xs bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center gap-1 shrink-0 cursor-pointer min-h-[36px]"
-              >
+              <button type="button" @click="downloadFlyerForCategory(cat)" :disabled="downloadingCatId === cat.id"
+                class="btn btn-xs bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center gap-1 shrink-0 cursor-pointer min-h-[36px]">
                 <ArrowDownTrayIcon class="w-3.5 h-3.5" />
                 <span>{{ downloadingCatId === cat.id ? '...' : 'Descargar' }}</span>
               </button>
@@ -1804,11 +2006,8 @@ onMounted(async () => {
 
         <!-- Mobile-Only Jump to Preview Button -->
         <div class="lg:hidden pt-2">
-          <button
-            type="button"
-            @click="activeMobileTab = 'preview'"
-            class="btn btn-primary w-full rounded-2xl flex items-center justify-center gap-2 text-sm shadow-md min-h-[48px]"
-          >
+          <button type="button" @click="activeMobileTab = 'preview'"
+            class="btn btn-primary w-full rounded-2xl flex items-center justify-center gap-2 text-sm shadow-md min-h-[48px]">
             <EyeIcon class="w-5 h-5" />
             <span>Ver Resultado en el Flyer</span>
           </button>
@@ -1818,99 +2017,107 @@ onMounted(async () => {
       <!-- ============================================== -->
       <!-- RIGHT COLUMN: STICKY LIVE PREVIEW & DOWNLOAD   -->
       <!-- ============================================== -->
-      <div
-        class="lg:col-span-7 sticky top-4 space-y-3"
-        :class="activeMobileTab === 'preview' ? 'block' : 'hidden lg:block'"
-      >
+      <div class="lg:col-span-7 sticky top-4 space-y-3"
+        :class="activeMobileTab === 'preview' ? 'block' : 'hidden lg:block'">
         <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3.5">
-          
+
           <!-- Category Quick-Pills bar directly on top of preview -->
           <div class="flex items-center justify-between gap-2 overflow-x-auto pb-1">
             <div class="flex items-center gap-1.5 shrink-0">
-              <button
-                v-for="cat in mainCartas"
-                :key="cat.id"
-                type="button"
-                @click="selectedCategoryId = cat.id"
+              <button v-for="cat in mainCartas" :key="cat.id" type="button" @click="selectedCategoryId = cat.id"
                 class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
-                :class="selectedCategoryId === cat.id ? 'bg-brand-primary text-white shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
-              >
+                :class="selectedCategoryId === cat.id ? 'bg-brand-primary text-white shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
                 <component :is="getCategoryIcon(cat.nombre, cat.siempre_disponible)" class="w-3.5 h-3.5" />
                 <span>{{ cat.nombre }}</span>
               </button>
             </div>
 
-            <!-- Instant Price Toggle in Preview Header -->
-            <button
-              type="button"
-              @click="showPricesInFlyer = !showPricesInFlyer"
-              class="px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 shrink-0 border cursor-pointer min-h-[38px]"
-              :class="showPricesInFlyer ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-200'"
-              title="Cambiar visibilidad de precios"
-            >
-              <TagIcon class="w-3.5 h-3.5" />
-              <span>{{ showPricesInFlyer ? '💰 Con Precios' : 'Sin Precios' }}</span>
-            </button>
+            <!-- Quick Actions Group: Price Toggle & Instant Font Size Stepper -->
+            <div class="flex items-center gap-1.5 shrink-0">
+              <!-- Instant Price Toggle in Preview Header -->
+              <button type="button" @click="showPricesInFlyer = !showPricesInFlyer"
+                class="px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 shrink-0 border cursor-pointer min-h-[38px]"
+                :class="showPricesInFlyer ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-200'"
+                title="Cambiar visibilidad de precios">
+                <TagIcon class="w-3.5 h-3.5" />
+                <span>{{ showPricesInFlyer ? '💰 Con Precios' : 'Sin Precios' }}</span>
+              </button>
+
+              <!-- Instant Font Size Stepper in Preview Header -->
+              <div class="flex items-center bg-slate-100 rounded-xl p-0.5 border border-slate-200 shrink-0 min-h-[38px]"
+                title="Ajustar tamaño de letra del flyer">
+                <button type="button" @click="adjustFontScale(-0.10)" :disabled="flyerFontScale <= 0.9"
+                  class="px-2 py-1 rounded-lg text-xs font-bold text-slate-700 hover:bg-white disabled:opacity-30 cursor-pointer transition-colors"
+                  title="Reducir letra">
+                  A-
+                </button>
+                <span class="px-1.5 text-[11px] font-bold text-purple-700 font-mono" title="Tamaño de letra actual">
+                  {{ Math.round(flyerFontScale * 100) }}%
+                </span>
+                <button type="button" @click="adjustFontScale(0.10)" :disabled="flyerFontScale >= 1.5"
+                  class="px-2 py-1 rounded-lg text-xs font-bold text-slate-700 hover:bg-white disabled:opacity-30 cursor-pointer transition-colors"
+                  title="Aumentar letra">
+                  A+
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Format & Style Metadata Badges -->
-          <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 pb-2 border-b border-slate-100">
+          <div
+            class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 pb-2 border-b border-slate-100">
             <div class="flex flex-wrap items-center gap-1.5">
               <span class="font-bold text-slate-800">
                 {{ currentCategory?.nombre }}
               </span>
               <span class="badge badge-sm bg-slate-100 text-slate-700 font-mono text-[10px]">
-                {{ formatOptions.find(f => f.id === selectedFormat)?.name }} ({{ formatOptions.find(f => f.id === selectedFormat)?.ratioText.split(' ')[1] }})
+                {{formatOptions.find(f => f.id === selectedFormat)?.name}} ({{formatOptions.find(f => f.id ===
+                  selectedFormat)?.ratioText.split(' ')[1] }})
               </span>
-              <span class="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+              <span
+                class="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
                 <SparklesIcon class="w-3 h-3 text-purple-600" />
                 <span>{{ currentStyle.name }}</span>
               </span>
               <span class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
                 Logo: {{ selectedLogoPosition }}
               </span>
+              <span
+                class="text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-mono font-bold">
+                Letra: {{ Math.round(flyerFontScale * 100) }}%
+              </span>
             </div>
 
             <!-- Format quick chips -->
             <div class="flex items-center gap-1">
-              <button
-                v-for="opt in formatOptions"
-                :key="opt.id"
-                type="button"
-                @click="selectedFormat = opt.id"
+              <button v-for="opt in formatOptions" :key="opt.id" type="button" @click="selectedFormat = opt.id"
                 class="px-2 py-0.5 rounded text-[10px] font-bold transition-all"
-                :class="selectedFormat === opt.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-              >
+                :class="selectedFormat === opt.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
                 {{ opt.id === 'whatsapp' ? '9:16' : opt.id === 'social' ? '1:1' : '16:9' }}
               </button>
             </div>
           </div>
 
           <!-- Direct Prominent Download Action Button -->
-          <button
-            type="button"
-            v-if="currentCategory"
-            @click="downloadFlyerForCategory(currentCategory)"
+          <button type="button" v-if="currentCategory" @click="downloadFlyerForCategory(currentCategory)"
             :disabled="downloadingCatId === currentCategory?.id"
-            class="btn w-full bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center gap-2 shadow-md cursor-pointer min-h-[46px] text-sm font-bold"
-          >
+            class="btn w-full bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center gap-2 shadow-md cursor-pointer min-h-[46px] text-sm font-bold">
             <ArrowDownTrayIcon class="w-5 h-5 text-amber-300" />
-            <span>{{ downloadingCatId === currentCategory?.id ? 'Generando imagen...' : `Descargar Flyer de ${currentCategory?.nombre} (${formatOptions.find(f => f.id === selectedFormat)?.name})` }}</span>
+            <span>{{downloadingCatId === currentCategory?.id ? 'Generando imagen...' : `Descargar Flyer de
+              ${currentCategory?.nombre} (${formatOptions.find(f => f.id === selectedFormat)?.name})` }}</span>
           </button>
 
           <!-- Flyer Canvas Display Stage -->
-          <div class="flex justify-center items-center bg-slate-900/5 p-3 sm:p-6 rounded-2xl border border-slate-200/90 min-h-[380px] overflow-hidden">
+          <div
+            class="flex justify-center items-center bg-slate-900/5 p-3 sm:p-6 rounded-2xl border border-slate-200/90 min-h-[380px] overflow-hidden">
             <div v-if="isGenerating" class="flex flex-col items-center gap-3 text-slate-500 py-16">
               <span class="loading loading-spinner loading-lg text-brand-primary"></span>
               <p class="text-xs font-medium">Generando composición con IA...</p>
             </div>
 
             <div v-else-if="flyerPreviewUrl" class="w-full flex justify-center">
-              <img
-                :src="flyerPreviewUrl"
-                :alt="`Flyer ${currentCategory?.nombre}`"
-                class="rounded-xl shadow-xl max-h-[620px] w-auto max-w-full object-contain border border-slate-300/80 transition-all duration-300"
-              />
+              <img :src="flyerPreviewUrl" :alt="`Flyer ${currentCategory?.nombre}`"
+                class="rounded-xl shadow-xl max-h-[620px] w-auto max-w-full object-contain border border-slate-300/80 transition-all duration-300" />
             </div>
 
             <div v-else class="text-center py-12 text-slate-400">
@@ -1921,11 +2128,8 @@ onMounted(async () => {
 
           <!-- Mobile Jump to Settings -->
           <div class="lg:hidden pt-1">
-            <button
-              type="button"
-              @click="activeMobileTab = 'controls'"
-              class="btn btn-outline btn-sm w-full rounded-xl flex items-center justify-center gap-1.5 text-xs text-slate-700 min-h-[44px]"
-            >
+            <button type="button" @click="activeMobileTab = 'controls'"
+              class="btn btn-outline btn-sm w-full rounded-xl flex items-center justify-center gap-1.5 text-xs text-slate-700 min-h-[44px]">
               <AdjustmentsHorizontalIcon class="w-4 h-4 text-purple-600" />
               <span>Personalizar Logo, Letras y Paleta de Colores</span>
             </button>

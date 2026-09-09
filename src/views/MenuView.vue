@@ -6,7 +6,6 @@ import { useMenuSchedule } from '@/composables/useMenuSchedule'
 import { useVisitorTracker } from '@/composables/useVisitorTracker'
 import { usePageMeta } from '@/composables/usePageMeta'
 import HeaderMenu from '@/components/HeaderMenu.vue'
-import CategoryTabs from '@/components/CategoryTabs.vue'
 import ProductCard from '@/components/ProductCard.vue'
 import ProductImageModal from '@/components/ProductImageModal.vue'
 import BarModal from '@/components/BarModal.vue'
@@ -82,14 +81,6 @@ const isAlmuerzoCategory = computed(() => {
   return !!activeCategory.value?.nombre.toLowerCase().includes('almuerzo')
 })
 
-// Filtrar categorías para excluir Desayunos y Bar & Coctelería de los tabs
-const filteredVisibleCategories = computed(() => {
-  return visibleCategories.value.filter(cat => {
-    const name = cat.nombre.toLowerCase()
-    return !name.includes('desayuno') && !name.includes('bar')
-  })
-})
-
 // Find ID of Bar category for modal quick jump
 const barCategory = computed(() => {
   return categories.value.find(c => c.siempre_disponible) || null
@@ -116,11 +107,6 @@ const filteredProducts = computed(() => {
   return list
 })
 
-function handleCategorySelect(id: string) {
-  selectedCategoryId.value = id
-  searchQuery.value = '' // Clear search on tab switch for clarity
-}
-
 function handleNavigateToBar(barId: string) {
   selectedCategoryId.value = barId
   searchQuery.value = ''
@@ -139,7 +125,7 @@ function triggerOpenBarModal() {
       v-model:search-query="searchQuery" @open-bar-modal="triggerOpenBarModal" />
 
     <!-- Main Content Container -->
-    <main class="flex-1 max-w-3xl w-full mx-auto px-3.5 sm:px-4 pb-20">
+    <main class="flex-1 max-w-3xl w-full mx-auto px-3.5 sm:px-4 pb-6 sm:pb-8">
       <!-- Realtime notification toast if active -->
       <transition name="fade">
         <div v-if="lastRealtimeEvent"
@@ -152,12 +138,8 @@ function triggerOpenBarModal() {
         </div>
       </transition>
 
-      <!-- Category Filter Tabs -->
-      <CategoryTabs v-if="!searchQuery" :categories="filteredVisibleCategories" :selected-id="selectedCategoryId"
-        :current-shift-id="currentShiftCategory?.id || null" @select="handleCategorySelect" />
-
-      <!-- Search results title / Category header -->
-      <div class="my-2.5 flex items-center justify-between border-b border-slate-200/80 pb-2">
+      <!-- Category title header -->
+      <div class="mt-2.5 mb-2.5 flex items-center justify-between border-b border-slate-200/80 pb-2">
         <div>
           <h2 class="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
             <span v-if="searchQuery">Resultados de búsqueda</span>
@@ -200,11 +182,11 @@ function triggerOpenBarModal() {
                 Promoción Especial
               </span>
               <span class="text-xs text-orange-100 font-medium italic">
-                “Buen sabor, buen precio.”
+                "¡Buen sabor, buen precio!"
               </span>
             </div>
             <h3 class="text-lg sm:text-xl font-black tracking-tight text-white mt-0.5">
-              MENÚ DESDE S/ 10
+              Menús desde S/ 10
             </h3>
           </div>
         </div>
@@ -285,10 +267,10 @@ function triggerOpenBarModal() {
             </div>
             <h4 class="text-base sm:text-lg font-black text-white mt-0.5"
               style="text-shadow: 0 2px 4px rgba(0,0,0,0.2)">
-              Carta de Bar & Coctelería
+              Descubre lo que tenemos al fondo
             </h4>
             <p class="text-xs text-amber-100 mt-0.5">
-              Mixología de autor, ambiente exclusivo y música en vivo
+              Buena música, buen ambiente y el lugar perfecto para disfrutar.
             </p>
           </div>
         </div>
