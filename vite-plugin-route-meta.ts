@@ -28,7 +28,7 @@ interface RouteMetaConfig {
 
 const SITE_NAME = 'Las Delicias Restobar'
 const DEFAULT_IMAGE = 'https://i.postimg.cc/V6LMwntr/las-delicias-logo.png'
-const BASE_URL = 'https://carta.lasdeliciasrestobar.com'
+const BASE_URL = 'https://lasdelicias.onrender.com'
 
 const ROUTE_CONFIGS: RouteMetaConfig[] = [
   {
