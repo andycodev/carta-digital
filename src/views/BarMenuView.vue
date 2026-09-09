@@ -10,78 +10,25 @@ import ProductImageModal from '@/components/ProductImageModal.vue'
 import type { Producto } from '@/types/database'
 import {
   InboxIcon,
-  ArrowLeftIcon,
-  BuildingStorefrontIcon,
-  SpeakerWaveIcon,
-  SpeakerXMarkIcon
+  ArrowLeftIcon
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
-const { categories, products, config } = useMenuStore()
+const { categories, products } = useMenuStore()
 const { trackVisit } = useVisitorTracker()
 
-// ─── MÚSICA AMBIENTAL ────────────────────────────────────────────────────────
-const BAR_MUSIC_URL = computed(() =>
-  config.value.bar_music_url ||
-  config.value.musica_url ||
-  'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3'
+// ─── MENÚ Y PRODUCTOS ─────────────────────────────────────────────────────────
+const selectedProductForImage = ref<Producto | null>(null)
+const isImageModalOpen = ref(false)
+const searchQuery = ref('')
+
+const currentTime = ref(
+  new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 )
 
-const isMusicPlaying = ref(false)
-let audio: HTMLAudioElement | null = null
+// Timer para actualizar el reloj cada segundo
+let timer: number | null = null
 
-function setupAudio() {
-  if (audio) return
-  audio = new Audio(BAR_MUSIC_URL.value)
-  audio.loop = true
-  audio.volume = (config.value.musica_volumen ?? 35) / 100
-}
-
-async function toggleMusic() {
-  setupAudio()
-  if (!audio) return
-
-  if (isMusicPlaying.value) {
-    audio.pause()
-    isMusicPlaying.value = false
-  } else {
-    try {
-      await audio.play()
-      isMusicPlaying.value = true
-    } catch (e) {
-      console.warn('[Bar] Audio play blocked:', e)
-    }
-  }
-}
-
-// Intentar autoplay al montar
-function attemptAutoplay() {
-  if (config.value.musica_activa && !isMusicPlaying.value) {
-    setupAudio()
-    const a = audio as HTMLAudioElement | null
-    a?.play().then(() => {
-      isMusicPlaying.value = true
-    }).catch(() => {
-      // Bloqueado por navegador - se activará en primera interacción
-      console.log('[Bar] Autoplay blocked, will activate on interaction')
-    })
-  }
-}
-
-// Activar en primera interacción si autoplay falló
-function handleFirstInteraction() {
-  if (config.value.musica_activa && !isMusicPlaying.value) {
-    setupAudio()
-    const a = audio as HTMLAudioElement | null
-    a?.play().then(() => {
-      isMusicPlaying.value = true
-    }).catch(() => { })
-  }
-  document.removeEventListener('click', handleFirstInteraction, { capture: true })
-  document.removeEventListener('touchstart', handleFirstInteraction, { capture: true })
-}
-
-// ─── MENÚ Y PRODUCTOS ─────────────────────────────────────────────────────────
 onMounted(() => {
   trackVisit('bar', route.query)
 
@@ -91,69 +38,23 @@ onMounted(() => {
     url: 'https://lasdelicias.onrender.com/bar'
   })
 
-  // Intentar autoplay de música
-  attemptAutoplay()
-
-  // Registrar primera interacción como fallback
-  document.addEventListener('click', handleFirstInteraction, { capture: true, once: true })
-  document.addEventListener('touchstart', handleFirstInteraction, { capture: true, once: true })
+  timer = window.setInterval(() => {
+    currentTime.value = new Date().toLocaleTimeString('es-PE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+  }, 1000)
 })
 
 onUnmounted(() => {
-  audio?.pause()
-  audio = null
-  document.removeEventListener('click', handleFirstInteraction, { capture: true })
-  document.removeEventListener('touchstart', handleFirstInteraction, { capture: true })
+  if (timer) clearInterval(timer)
 })
 
-const searchQuery = ref('')
-const selectedProductForImage = ref<Producto | null>(null)
-const isImageModalOpen = ref(false)
-
-const currentTime = ref(
-  new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
-)
-
-const selectedBarCategory = ref('todos')
-
-// Filtrar productos por categoría personalizada del Bar
+// Filtrar productos por categoría del Bar
 const filteredBarProducts = computed(() => {
-  let list = products.value.filter(p => p.categoria_id === barCategory.value?.id)
-
-  // Filtrar por categoría personalizada del Bar (basado en nombre)
-  if (selectedBarCategory.value === 'cocteles') {
-    list = list.filter(p =>
-      p.nombre.toLowerCase().includes('coctel') ||
-      p.nombre.toLowerCase().includes('pisco') ||
-      p.nombre.toLowerCase().includes('martini') ||
-      p.nombre.toLowerCase().includes('gin') ||
-      p.descripcion?.toLowerCase().includes('coctel')
-    )
-  } else if (selectedBarCategory.value === 'cervezas') {
-    list = list.filter(p =>
-      p.nombre.toLowerCase().includes('cerveza') ||
-      p.nombre.toLowerCase().includes('beer')
-    )
-  } else if (selectedBarCategory.value === 'sin-alcohol') {
-    list = list.filter(p =>
-      p.nombre.toLowerCase().includes('sin alcohol') ||
-      p.nombre.toLowerCase().includes('mocktail') ||
-      p.nombre.toLowerCase().includes('jugo') ||
-      p.nombre.toLowerCase().includes('refresco')
-    )
-  }
-  // 'todos' no filtra por subcategoría
-
-  // Aplicar búsqueda
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase().trim()
-    list = list.filter(p =>
-      p.nombre.toLowerCase().includes(q) ||
-      (p.descripcion && p.descripcion.toLowerCase().includes(q))
-    )
-  }
-
-  return list
+  return products.value.filter(p => p.categoria_id === barCategory.value?.id)
 })
 
 // Bar category
@@ -182,42 +83,25 @@ function closeProductImage() {
     style="background: linear-gradient(160deg, #0d0d1a 0%, #0f1424 50%, #0a0d18 100%)">
     <!-- Header compartido con estilo Bar -->
     <HeaderMenu :current-time="currentTime" current-shift-name="Bar & Coctelería" :is-realtime-connected="true"
-      :is-supabase-configured="false" v-model:search-query="searchQuery">
-      <!-- Botón de música en el header -->
-      <template #extra-actions>
-        <button type="button" @click="toggleMusic"
-          class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer" :class="isMusicPlaying
-            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-            : 'bg-white/8 text-slate-400 border border-white/15'">
-          <SpeakerWaveIcon v-if="isMusicPlaying" class="w-4 h-4" />
-          <SpeakerXMarkIcon v-else class="w-4 h-4" />
-          <span>{{ isMusicPlaying ? 'ON' : 'OFF' }}</span>
-        </button>
-      </template>
+      :is-supabase-configured="false" v-model:search-query="searchQuery" :dark-mode="true">
     </HeaderMenu>
 
     <!-- Main Content compacto -->
-    <main class="flex-1 max-w-3xl w-full mx-auto px-3.5 sm:px-4 pb-20 pt-1">
+    <main class="flex-1 max-w-3xl w-full mx-auto px-3.5 sm:px-4 pb-20">
 
       <!-- Header de sección compacto -->
-      <div class="my-2.5 flex items-center justify-between border-b border-white/10 pb-2">
+      <div class="my-2 flex items-center justify-between border-b border-white/10 pb-2">
         <div>
-          <h2 class="text-lg font-bold text-white flex items-center gap-2">
-            <span v-if="searchQuery">Resultados</span>
-            <span v-else>Carta del Bar</span>
+          <h2 class="text-lg font-bold text-white">
+            Carta del Bar
           </h2>
           <p class="text-[11px] text-slate-400 mt-0.5">
-            <span v-if="searchQuery">
-              {{ filteredBarProducts.length }} {{ filteredBarProducts.length === 1 ? 'resultado' : 'resultados' }} para
-              "{{
-                searchQuery }}"
-            </span>
-            <span v-else>Servicio continuo 24/7</span>
+            Servicio continuo 24/7
           </p>
         </div>
-        <span class="badge bg-white/10 border border-white/20 text-slate-300 font-semibold text-[11px] px-2 py-1.5">
-          {{ filteredBarProducts.length }} {{ filteredBarProducts.length === 1 ? 'ítem' : 'ítems' }}
-        </span>
+        <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-full">
+          <span class="text-xs font-semibold text-slate-800">{{ currentTime }}</span>
+        </div>
       </div>
 
       <!-- Empty State -->
@@ -226,17 +110,8 @@ function closeProductImage() {
         <InboxIcon class="w-10 h-10 text-slate-600 mx-auto mb-2" />
         <h3 class="text-sm font-bold text-slate-300 mb-1">No hay bebidas</h3>
         <p class="text-xs text-slate-500 max-w-sm mx-auto mb-3">
-          <span v-if="searchQuery">
-            No encontramos opciones para "{{ searchQuery }}".
-          </span>
-          <span v-else>
-            Esta categoría está vacía.
-          </span>
+          Esta categoría está vacía.
         </p>
-        <button v-if="searchQuery" type="button" @click="searchQuery = ''"
-          class="btn btn-xs btn-outline border-white/20 text-slate-300 hover:bg-white/10 rounded-lg">
-          Limpiar búsqueda
-        </button>
       </div>
 
       <!-- Product Cards - usando ProductCard compartido -->
@@ -245,14 +120,12 @@ function closeProductImage() {
           @open-image="openProductImage" />
       </div>
 
-
-      <!-- Link de regreso a cocina -->
+      <!-- Botón volver al menú principal -->
       <div class="mt-4 text-center">
         <router-link to="/"
           class="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-amber-400 transition-colors bg-white/6 hover:bg-white/10 px-4 py-2.5 rounded-xl border border-white/12">
-          <BuildingStorefrontIcon class="w-4 h-4" />
-          <span>Volver a la Carta Principal</span>
-          <ArrowLeftIcon class="w-3.5 h-3.5" />
+          <ArrowLeftIcon class="w-4 h-4" />
+          <span>Volver al menú principal</span>
         </router-link>
       </div>
     </main>

@@ -43,11 +43,11 @@ function openModal() {
     const dialog = document.getElementById('modal_bar') as HTMLDialogElement
     dialog?.showModal()
   }
-  // Reiniciar video desde el inicio con audio
+  // Reiniciar video desde el inicio SIN audio para no interferir con música ambiental
   if (videoRef.value) {
     videoRef.value.currentTime = 0
-    videoRef.value.muted = false
-    videoRef.value.play().catch(err => console.log('Autoplay con audio bloqueado:', err))
+    videoRef.value.muted = true
+    videoRef.value.play().catch(err => console.log('Autoplay bloqueado:', err))
   }
 }
 
@@ -84,7 +84,7 @@ defineExpose({
       <button id="btn-open-bar-modal" type="button" @click="openModal"
         class="bg-slate-900/95 hover:bg-slate-800 text-white font-semibold shadow-lg hover:shadow-xl rounded-full px-3.5 py-2 sm:px-4 sm:py-2.5 flex items-center gap-1.5 group transition-all duration-150 hover:scale-105 active:scale-95 border border-slate-700/80 backdrop-blur-xs text-xs cursor-pointer">
         <SparklesIcon class="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform duration-150" />
-        <span class="font-medium tracking-tight">Zona Bar</span>
+        <span class="font-medium tracking-tight">descubre lo que hay al fondo</span>
       </button>
     </div>
 

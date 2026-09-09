@@ -117,12 +117,6 @@ router.beforeEach(async (to, _, next) => {
     return
   }
 
-  // Si la ruta es '/' y el usuario está autenticado, ir al menú público (no al admin)
-  if (to.path === '/' && isAuthenticated.value) {
-    next()
-    return
-  }
-
   next()
 })
 

@@ -15,7 +15,8 @@ import type { Producto } from '@/types/database'
 import {
   InboxIcon,
   SparklesIcon,
-  ArrowTopRightOnSquareIcon
+  ArrowTopRightOnSquareIcon,
+  ClockIcon
 } from '@heroicons/vue/24/outline'
 
 const {
@@ -79,6 +80,14 @@ const isAlmuerzoCategory = computed(() => {
   return !!activeCategory.value?.nombre.toLowerCase().includes('almuerzo')
 })
 
+// Filtrar categorías para excluir Desayunos y Bar & Coctelería de los tabs
+const filteredVisibleCategories = computed(() => {
+  return visibleCategories.value.filter(cat => {
+    const name = cat.nombre.toLowerCase()
+    return !name.includes('desayuno') && !name.includes('bar')
+  })
+})
+
 // Find ID of Bar category for modal quick jump
 const barCategory = computed(() => {
   return categories.value.find(c => c.siempre_disponible) || null
@@ -128,7 +137,7 @@ function triggerOpenBarModal() {
       v-model:search-query="searchQuery" @open-bar-modal="triggerOpenBarModal" />
 
     <!-- Main Content Container -->
-    <main class="flex-1 max-w-3xl w-full mx-auto px-3.5 sm:px-4 pb-20 pt-1">
+    <main class="flex-1 max-w-3xl w-full mx-auto px-3.5 sm:px-4 pb-20">
       <!-- Realtime notification toast if active -->
       <transition name="fade">
         <div v-if="lastRealtimeEvent"
@@ -142,7 +151,7 @@ function triggerOpenBarModal() {
       </transition>
 
       <!-- Category Filter Tabs -->
-      <CategoryTabs v-if="!searchQuery" :categories="visibleCategories" :selected-id="selectedCategoryId"
+      <CategoryTabs v-if="!searchQuery" :categories="filteredVisibleCategories" :selected-id="selectedCategoryId"
         :current-shift-id="currentShiftCategory?.id || null" @select="handleCategorySelect" />
 
       <!-- Search results title / Category header -->
@@ -166,10 +175,10 @@ function triggerOpenBarModal() {
           </p>
         </div>
 
-        <span
-          class="badge bg-white border border-slate-200 text-slate-600 font-semibold text-[11px] px-2 py-1.5 shadow-2xs">
-          {{ filteredProducts.length }} {{ filteredProducts.length === 1 ? 'ítem' : 'ítems' }}
-        </span>
+        <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-full">
+          <ClockIcon class="w-3.5 h-3.5 text-amber-600" />
+          <span class="text-xs font-semibold text-slate-800">{{ currentTime }}</span>
+        </div>
       </div>
 
       <!-- Promoción Destacada Almuerzo (Exclusiva de la carta de Almuerzo) -->

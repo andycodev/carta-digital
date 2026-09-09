@@ -5,6 +5,10 @@ import { MusicalNoteIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline'
 
 const { config } = useMenuStore()
 
+const props = defineProps<{
+  darkMode?: boolean
+}>()
+
 const audioRef = ref<HTMLAudioElement | null>(null)
 const isPlaying = ref(false)
 const hasError = ref(false)
@@ -63,7 +67,7 @@ function handleFirstInteraction() {
           hasError.value = false
           sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'true')
         })
-        .catch(() => {})
+        .catch(() => { })
     }
   }
   // Remove all event listeners
@@ -78,7 +82,7 @@ onMounted(() => {
   if (audioRef.value) {
     audioRef.value.volume = (config.value.musica_volumen || 35) / 100
   }
-  
+
   // Intentar autoplay con muted primero, luego desmutar
   if (config.value.musica_activa) {
     const pref = sessionStorage.getItem(STORAGE_KEY_MUSIC_PREF)
@@ -91,7 +95,7 @@ onMounted(() => {
           isPlaying.value = true
           hasError.value = false
           sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'true')
-          
+
           // Intentar desmutar inmediatamente después de iniciar
           setTimeout(() => {
             if (audioRef.value && isPlaying.value) {
@@ -123,28 +127,23 @@ onUnmounted(() => {
 
 <template>
   <div v-if="config.musica_activa" class="inline-flex items-center">
-    <audio
-      ref="audioRef"
-      :src="config.musica_url"
-      loop
-      preload="none"
-      @ended="isPlaying = false"
-    ></audio>
+    <audio ref="audioRef" :src="config.musica_url" loop preload="none" @ended="isPlaying = false"></audio>
 
-    <button
-      type="button"
-      @click="toggleMusic"
+    <button type="button" @click="toggleMusic"
       class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border cursor-pointer"
       :class="[
         isPlaying
-          ? 'bg-amber-50 text-amber-900 border-amber-300 shadow-2xs'
-          : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50'
-      ]"
-      :title="isPlaying ? 'Pausar música ambiental' : 'Reproducir música ambiental'"
-      aria-label="Control de música ambiental"
-    >
-      <SpeakerWaveIcon v-if="isPlaying" class="w-3.5 h-3.5 text-amber-700 animate-pulse" />
-      <MusicalNoteIcon v-else class="w-3.5 h-3.5 text-slate-500" />
+          ? darkMode
+            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+            : 'bg-amber-50 text-amber-900 border-amber-300 shadow-2xs'
+          : darkMode
+            ? 'bg-white/10 text-slate-400 border-white/15 hover:bg-white/20'
+            : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50'
+      ]" :title="isPlaying ? 'Pausar música ambiental' : 'Reproducir música ambiental'"
+      aria-label="Control de música ambiental">
+      <SpeakerWaveIcon v-if="isPlaying"
+        :class="['w-3.5 h-3.5', darkMode ? 'text-amber-400 animate-pulse' : 'text-amber-700 animate-pulse']" />
+      <MusicalNoteIcon v-else :class="['w-3.5 h-3.5', darkMode ? 'text-slate-400' : 'text-slate-500']" />
 
       <span class="text-[11px] font-medium hidden sm:inline">
         {{ isPlaying ? 'Música activa' : 'Música' }}
@@ -152,4 +151,3 @@ onUnmounted(() => {
     </button>
   </div>
 </template>
-
