@@ -5,6 +5,7 @@ import { useMenuStore } from '@/composables/useMenuStore'
 import { useVisitorTracker } from '@/composables/useVisitorTracker'
 import { usePageMeta } from '@/composables/usePageMeta'
 import HeaderMenu from '@/components/HeaderMenu.vue'
+import BarImageSlider from '@/components/BarImageSlider.vue'
 import ProductCard from '@/components/ProductCard.vue'
 import ProductImageModal from '@/components/ProductImageModal.vue'
 import type { Producto } from '@/types/database'
@@ -85,6 +86,9 @@ function closeProductImage() {
     <HeaderMenu :current-time="currentTime" current-shift-name="Bar & Coctelería" :is-realtime-connected="true"
       :is-supabase-configured="false" v-model:search-query="searchQuery" :dark-mode="true">
     </HeaderMenu>
+
+    <!-- Slider de imágenes del bar (full-width debajo del header) -->
+    <BarImageSlider />
 
     <!-- Main Content compacto -->
     <main class="flex-1 max-w-3xl w-full mx-auto px-3.5 sm:px-4 pb-20">

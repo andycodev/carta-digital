@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { SparklesIcon, XMarkIcon, ArrowRightIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/vue/24/outline'
+import { useAudioController } from '@/composables/useAudioController'
+import { SparklesIcon, XMarkIcon, ArrowRightIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
   barCategoryId?: string
@@ -10,10 +11,13 @@ const emit = defineEmits<{
   (e: 'navigate-to-bar', barCatId: string): void
 }>()
 
+const { activateVideoAudio, deactivateVideoAudio } = useAudioController()
+
 const modalRef = ref<HTMLDialogElement | null>(null)
 const videoRef = ref<HTMLVideoElement | null>(null)
 const videoContainerRef = ref<HTMLDivElement | null>(null)
 const isFullscreen = ref(false)
+const isVideoMuted = ref(true) // El video siempre inicia en silencio
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
@@ -31,6 +35,23 @@ function toggleFullscreen() {
   }
 }
 
+/** Alterna el mute del video y coordina con la música ambiental */
+function toggleVideoMute() {
+  if (!videoRef.value) return
+
+  if (isVideoMuted.value) {
+    // Quitar mute → el video tendrá audio → pausar música ambiental
+    videoRef.value.muted = false
+    isVideoMuted.value = false
+    activateVideoAudio()
+  } else {
+    // Silenciar video → reanudar música ambiental
+    videoRef.value.muted = true
+    isVideoMuted.value = true
+    deactivateVideoAudio()
+  }
+}
+
 // Escuchar cambios de pantalla completa
 document.addEventListener('fullscreenchange', () => {
   isFullscreen.value = !!document.fullscreenElement
@@ -43,19 +64,25 @@ function openModal() {
     const dialog = document.getElementById('modal_bar') as HTMLDialogElement
     dialog?.showModal()
   }
-  // Reiniciar video desde el inicio SIN audio para no interferir con música ambiental
+  // Reiniciar video desde el inicio siempre en MUTE para no interferir con música ambiental
   if (videoRef.value) {
     videoRef.value.currentTime = 0
     videoRef.value.muted = true
+    isVideoMuted.value = true
     videoRef.value.play().catch(err => console.log('Autoplay bloqueado:', err))
   }
 }
 
 function closeModal() {
-  // Pausar video cuando se cierra el modal
+  // Silenciar y pausar el video + notificar que el audio del video ya no está activo
   if (videoRef.value) {
     videoRef.value.pause()
+    videoRef.value.muted = true
+    isVideoMuted.value = true
   }
+  // Liberar el audio para que la música ambiental pueda reanudar
+  deactivateVideoAudio()
+
   if (modalRef.value) {
     modalRef.value.close()
   } else {
@@ -109,8 +136,8 @@ defineExpose({
         <!-- Video Player Showcase -->
         <div ref="videoContainerRef"
           class="relative w-full aspect-[4/3] sm:aspect-video bg-black overflow-hidden flex items-center justify-center">
-          <!-- Video local -->
-          <video ref="videoRef" src="/videos/bar-promo.mp4" autoplay loop playsinline preload="auto"
+          <!-- Video local — siempre inicia en mute para no competir con la música -->
+          <video ref="videoRef" src="/videos/bar-promo.mp4" autoplay loop muted playsinline preload="auto"
             class="w-full h-full object-contain bg-black">
             Tu navegador no soporta el elemento de video.
           </video>
@@ -126,6 +153,21 @@ defineExpose({
               <span>En Vivo • Mixología</span>
             </span>
           </div>
+
+          <!-- Botón toggle audio del video (bottom-right del video) -->
+          <button
+            type="button"
+            @click="toggleVideoMute"
+            class="absolute bottom-3 right-4 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all duration-200 cursor-pointer border"
+            :class="isVideoMuted
+              ? 'bg-black/50 text-slate-300 border-white/20 hover:bg-black/70 hover:text-white'
+              : 'bg-amber-500/90 text-white border-amber-400 hover:bg-amber-500 shadow-md'"
+            :title="isVideoMuted ? 'Activar audio del video (pausa música)' : 'Silenciar video (reanuda música)'"
+          >
+            <SpeakerXMarkIcon v-if="isVideoMuted" class="w-3.5 h-3.5" />
+            <SpeakerWaveIcon v-else class="w-3.5 h-3.5 animate-pulse" />
+            <span class="hidden sm:inline">{{ isVideoMuted ? 'Sin audio' : 'Con audio' }}</span>
+          </button>
         </div>
 
         <!-- Modal Text Content -->

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useMenuStore } from '@/composables/useMenuStore'
+import { useAudioController } from '@/composables/useAudioController'
 import { MusicalNoteIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline'
 
 const { config } = useMenuStore()
+const { videoAudioActive } = useAudioController()
 
 const props = defineProps<{
   darkMode?: boolean
@@ -13,7 +15,49 @@ const audioRef = ref<HTMLAudioElement | null>(null)
 const isPlaying = ref(false)
 const hasError = ref(false)
 
+// Bandera para saber si la música fue pausada por el video (no por el usuario)
+const pausedByVideo = ref(false)
+
 const STORAGE_KEY_MUSIC_PREF = 'delicias_user_wants_music'
+
+// ── Controles públicos (expuestos para uso externo si hace falta) ──────────────
+
+function pauseMusic() {
+  if (audioRef.value && isPlaying.value) {
+    audioRef.value.pause()
+    isPlaying.value = false
+    pausedByVideo.value = true
+  }
+}
+
+function resumeMusic() {
+  if (audioRef.value && pausedByVideo.value && config.value.musica_activa) {
+    audioRef.value.volume = (config.value.musica_volumen || 35) / 100
+    audioRef.value.play()
+      .then(() => {
+        isPlaying.value = true
+        pausedByVideo.value = false
+        hasError.value = false
+      })
+      .catch(() => {
+        pausedByVideo.value = false
+      })
+  }
+}
+
+defineExpose({ pauseMusic, resumeMusic })
+
+// ── Watcher: coordinar con audio del video ────────────────────────────────────
+
+watch(videoAudioActive, (videoOn) => {
+  if (videoOn) {
+    pauseMusic()
+  } else {
+    resumeMusic()
+  }
+})
+
+// ── Toggle manual del usuario ─────────────────────────────────────────────────
 
 function toggleMusic() {
   if (!audioRef.value || !config.value.musica_url) return
@@ -21,6 +65,7 @@ function toggleMusic() {
   if (isPlaying.value) {
     audioRef.value.pause()
     isPlaying.value = false
+    pausedByVideo.value = false
     sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'false')
   } else {
     audioRef.value.volume = (config.value.musica_volumen || 35) / 100
@@ -29,6 +74,7 @@ function toggleMusic() {
       .then(() => {
         isPlaying.value = true
         hasError.value = false
+        pausedByVideo.value = false
         sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'true')
       })
       .catch(err => {
@@ -38,6 +84,8 @@ function toggleMusic() {
       })
   }
 }
+
+// ── Watchers de config ────────────────────────────────────────────────────────
 
 watch(() => config.value.musica_volumen, (newVol) => {
   if (audioRef.value) {
@@ -55,73 +103,90 @@ watch(() => config.value.musica_url, () => {
   }
 })
 
-// Activate audio on first user interaction if autoplay was blocked
-function handleFirstInteraction() {
-  if (audioRef.value && !isPlaying.value && config.value.musica_activa) {
-    const pref = sessionStorage.getItem(STORAGE_KEY_MUSIC_PREF)
-    if (pref !== 'false') {
-      audioRef.value!.muted = false
-      audioRef.value.play()
-        .then(() => {
-          isPlaying.value = true
-          hasError.value = false
-          sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'true')
-        })
-        .catch(() => { })
-    }
-  }
-  // Remove all event listeners
-  document.removeEventListener('click', handleFirstInteraction, { capture: true })
-  document.removeEventListener('touchstart', handleFirstInteraction, { capture: true })
-  document.removeEventListener('scroll', handleFirstInteraction, { capture: true })
-  document.removeEventListener('keydown', handleFirstInteraction, { capture: true })
-  document.removeEventListener('mousemove', handleFirstInteraction, { capture: true })
+// ── Activación en primer scroll / interacción ─────────────────────────────────
+
+/**
+ * Intenta iniciar la música ambiental.
+ * Llamado tanto en el primer scroll como en el primer click/touch.
+ * Solo activa si el usuario no ha dicho explícitamente que no quiere música.
+ */
+function tryStartMusic() {
+  if (!audioRef.value || isPlaying.value || !config.value.musica_activa) return
+  const pref = sessionStorage.getItem(STORAGE_KEY_MUSIC_PREF)
+  if (pref === 'false') return
+
+  // Si el video tiene audio activo, no iniciamos la música
+  if (videoAudioActive.value) return
+
+  audioRef.value.volume = (config.value.musica_volumen || 35) / 100
+  audioRef.value.muted = false
+  audioRef.value.play()
+    .then(() => {
+      isPlaying.value = true
+      hasError.value = false
+      pausedByVideo.value = false
+      sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'true')
+    })
+    .catch(() => { /* Bloqueado — se intentará en siguiente interacción */ })
 }
 
+function handleFirstInteraction() {
+  tryStartMusic()
+  // Remover todos los listeners de primera interacción
+  document.removeEventListener('click', handleFirstInteraction, { capture: true })
+  document.removeEventListener('touchstart', handleFirstInteraction, { capture: true })
+  document.removeEventListener('keydown', handleFirstInteraction, { capture: true })
+}
+
+// El scroll tiene su propio listener para QR/acceso directo (primer scroll activa sin necesidad de click)
+function handleFirstScroll() {
+  tryStartMusic()
+  document.removeEventListener('scroll', handleFirstScroll, { capture: true })
+}
+
+// ── Montaje: intentar autoplay ────────────────────────────────────────────────
+
 onMounted(() => {
-  if (audioRef.value) {
-    audioRef.value.volume = (config.value.musica_volumen || 35) / 100
-  }
+  if (!audioRef.value) return
 
-  // Intentar autoplay con muted primero, luego desmutar
-  if (config.value.musica_activa) {
-    const pref = sessionStorage.getItem(STORAGE_KEY_MUSIC_PREF)
-    // Si no hay preferencia guardada o es 'true', intentar autoplay
-    if (pref !== 'false') {
-      // Primero intentar autoplay muted (funciona en todos los navegadores)
-      audioRef.value!.muted = true
-      audioRef.value?.play()
-        .then(() => {
-          isPlaying.value = true
-          hasError.value = false
-          sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'true')
+  audioRef.value.volume = (config.value.musica_volumen || 35) / 100
 
-          // Intentar desmutar inmediatamente después de iniciar
-          setTimeout(() => {
-            if (audioRef.value && isPlaying.value) {
-              audioRef.value.muted = false
-            }
-          }, 100)
-        })
-        .catch(err => {
-          console.warn('Audio autoplay blocked by browser:', err)
-          // Bloqueado por navegador - activar en primera interacción con múltiples eventos
-          document.addEventListener('click', handleFirstInteraction, { capture: true, once: true })
-          document.addEventListener('touchstart', handleFirstInteraction, { capture: true, once: true })
-          document.addEventListener('scroll', handleFirstInteraction, { capture: true, once: true })
-          document.addEventListener('keydown', handleFirstInteraction, { capture: true, once: true })
-          document.addEventListener('mousemove', handleFirstInteraction, { capture: true, once: true })
-        })
-    }
-  }
+  if (!config.value.musica_activa) return
+
+  const pref = sessionStorage.getItem(STORAGE_KEY_MUSIC_PREF)
+  if (pref === 'false') return
+
+  // Estrategia: intentar autoplay muted → desmutar 100ms después.
+  // Esta técnica funciona incluso en navegadores modernos sin interacción previa.
+  audioRef.value.muted = true
+  audioRef.value.play()
+    .then(() => {
+      isPlaying.value = true
+      hasError.value = false
+      sessionStorage.setItem(STORAGE_KEY_MUSIC_PREF, 'true')
+
+      // Desmutar inmediatamente (el navegador ya aceptó el autoplay)
+      setTimeout(() => {
+        if (audioRef.value && isPlaying.value) {
+          audioRef.value.muted = false
+        }
+      }, 100)
+    })
+    .catch(() => {
+      // Autoplay completamente bloqueado → activar en primer scroll o interacción.
+      // El scroll cubre el caso de acceso por QR/enlace directo.
+      document.addEventListener('scroll', handleFirstScroll, { capture: true, once: true })
+      document.addEventListener('click', handleFirstInteraction, { capture: true, once: true })
+      document.addEventListener('touchstart', handleFirstInteraction, { capture: true, once: true })
+      document.addEventListener('keydown', handleFirstInteraction, { capture: true, once: true })
+    })
 })
 
 onUnmounted(() => {
+  document.removeEventListener('scroll', handleFirstScroll, { capture: true })
   document.removeEventListener('click', handleFirstInteraction, { capture: true })
   document.removeEventListener('touchstart', handleFirstInteraction, { capture: true })
-  document.removeEventListener('scroll', handleFirstInteraction, { capture: true })
   document.removeEventListener('keydown', handleFirstInteraction, { capture: true })
-  document.removeEventListener('mousemove', handleFirstInteraction, { capture: true })
 })
 </script>
 
