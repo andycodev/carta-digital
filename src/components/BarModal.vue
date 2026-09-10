@@ -6,8 +6,6 @@ import {
   SparklesIcon,
   XMarkIcon,
   ArrowRightIcon,
-  ArrowsPointingOutIcon,
-  ArrowsPointingInIcon,
   SpeakerWaveIcon,
   SpeakerXMarkIcon
 } from '@heroicons/vue/24/outline'
@@ -25,25 +23,16 @@ const { activateVideoAudio, deactivateVideoAudio } = useAudioController()
 
 const modalRef = ref<HTMLDialogElement | null>(null)
 const videoRef = ref<HTMLVideoElement | null>(null)
-const videoContainerRef = ref<HTMLDivElement | null>(null)
-const isFullscreen = ref(false)
 const isVideoMuted = ref(false) // Al abrir, el video busca reproducir con AUDIO
 
-function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    videoContainerRef.value?.requestFullscreen().then(() => {
-      isFullscreen.value = true
-    }).catch(err => {
-      console.log('Error al entrar en pantalla completa:', err)
-    })
-  } else {
-    document.exitFullscreen().then(() => {
-      isFullscreen.value = false
-    }).catch(err => {
-      console.log('Error al salir de pantalla completa:', err)
-    })
-  }
-}
+// Estados para deslizamiento hacia abajo (Swipe down to dismiss)
+const isDragging = ref(false)
+const isClosing = ref(false)
+const dragOffsetY = ref(0)
+let startY = 0
+let startX = 0
+let startTime = 0
+let isMouseDown = false
 
 /** Alterna el mute del video y coordina con la música ambiental */
 function toggleVideoMute() {
@@ -63,6 +52,10 @@ function toggleVideoMute() {
 }
 
 function openModal() {
+  dragOffsetY.value = 0
+  isClosing.value = false
+  isDragging.value = false
+
   // 1. Pausar inmediatamente la música de la carta principal
   activateVideoAudio()
 
@@ -95,7 +88,7 @@ function openModal() {
   }
 }
 
-function closeModal() {
+function actuallyCloseModal() {
   // 1. Detener el video y apagar su audio
   if (videoRef.value) {
     videoRef.value.pause()
@@ -115,12 +108,30 @@ function closeModal() {
   }
 }
 
+/** Cierra el modal con una animación suave de descenso */
+function closeModal(animated = true) {
+  if (isClosing.value) return
+
+  if (animated) {
+    isClosing.value = true
+    dragOffsetY.value = window.innerHeight || 800
+    setTimeout(() => {
+      actuallyCloseModal()
+      isClosing.value = false
+      dragOffsetY.value = 0
+    }, 280)
+  } else {
+    actuallyCloseModal()
+    dragOffsetY.value = 0
+  }
+}
+
 function handleNativeClose() {
-  closeModal()
+  actuallyCloseModal()
 }
 
 function goToBarCategory(filterQuery?: string) {
-  closeModal()
+  closeModal(true)
   if (props.barCategoryId) {
     emit('navigate-to-bar', props.barCategoryId)
   }
@@ -141,6 +152,88 @@ function handleMusicClick() {
   }
 }
 
+/* ═════════════════════════════════════════════════════════════
+   GESTOS TÁCTILES Y ARRASTRE PARA DESLIZAR HACIA ABAJO (SWIPE)
+   ═════════════════════════════════════════════════════════════ */
+function onTouchStart(e: TouchEvent) {
+  if (!e.touches[0]) return
+  startY = e.touches[0].clientY
+  startX = e.touches[0].clientX
+  startTime = Date.now()
+  isDragging.value = false
+}
+
+function onTouchMove(e: TouchEvent) {
+  if (!e.touches[0]) return
+  const currentY = e.touches[0].clientY
+  const currentX = e.touches[0].clientX
+  const deltaY = currentY - startY
+  const deltaX = Math.abs(currentX - startX)
+
+  // Solo si se desliza hacia abajo y el movimiento es predominantemente vertical
+  if (deltaY > 6 && deltaY > deltaX) {
+    isDragging.value = true
+    dragOffsetY.value = Math.max(0, deltaY)
+    if (e.cancelable) {
+      e.preventDefault()
+    }
+  }
+}
+
+function onTouchEnd() {
+  if (!isDragging.value) return
+  isDragging.value = false
+
+  const elapsed = Date.now() - startTime
+  const velocity = dragOffsetY.value / Math.max(elapsed, 1)
+
+  // Si deslizó más de 80px o hizo un movimiento rápido hacia abajo
+  if (dragOffsetY.value > 80 || velocity > 0.4) {
+    closeModal(true)
+  } else {
+    dragOffsetY.value = 0
+  }
+}
+
+/* Soporte de arrastre con ratón en desktop */
+function onMouseDown(e: MouseEvent) {
+  if ((e.target as HTMLElement)?.closest('button, a')) return
+  isMouseDown = true
+  startY = e.clientY
+  startTime = Date.now()
+  isDragging.value = false
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+function onMouseMove(e: MouseEvent) {
+  if (!isMouseDown) return
+  const deltaY = e.clientY - startY
+  if (deltaY > 5) {
+    isDragging.value = true
+    dragOffsetY.value = Math.max(0, deltaY)
+  }
+}
+
+function onMouseUp() {
+  if (!isMouseDown) return
+  isMouseDown = false
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('mouseup', onMouseUp)
+
+  if (!isDragging.value) return
+  isDragging.value = false
+
+  const elapsed = Date.now() - startTime
+  const velocity = dragOffsetY.value / Math.max(elapsed, 1)
+
+  if (dragOffsetY.value > 80 || velocity > 0.4) {
+    closeModal(true)
+  } else {
+    dragOffsetY.value = 0
+  }
+}
+
 function onVisibilityChange() {
   if (document.hidden && modalRef.value?.open && videoRef.value) {
     videoRef.value.pause()
@@ -148,14 +241,13 @@ function onVisibilityChange() {
 }
 
 onMounted(() => {
-  document.addEventListener('fullscreenchange', () => {
-    isFullscreen.value = !!document.fullscreenElement
-  })
   document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('mouseup', onMouseUp)
 })
 
 defineExpose({
@@ -177,13 +269,28 @@ defineExpose({
     </div>
 
     <!-- ═══════════════════════════════════════════════════════
-         MODAL ENVOLVENTE TIPO TIKTOK / REELS (PANTALLA COMPLETA VERTICAL)
+         MODAL ENVOLVENTE TIPO TIKTOK / REELS (DESLIZABLE HACIA ABAJO)
          ═══════════════════════════════════════════════════════════ -->
     <dialog id="modal_bar" ref="modalRef" @close="handleNativeClose"
       class="modal modal-bottom sm:modal-middle bg-slate-950/85 backdrop-blur-md p-0 sm:p-4">
       
       <div
-        class="modal-box relative !p-0 !bg-black text-white border-0 sm:border sm:border-amber-500/40 w-full sm:max-w-md h-[95vh] sm:h-[90vh] max-h-[96vh] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col select-none ring-1 ring-white/15">
+        class="modal-box relative !p-0 !bg-black text-white border-0 sm:border sm:border-amber-500/40 w-full sm:max-w-md h-[95vh] sm:h-[90vh] max-h-[96vh] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col select-none ring-1 ring-white/15 will-change-transform"
+        :style="{
+          transform: dragOffsetY > 0 || isClosing ? `translateY(${dragOffsetY}px)` : 'translateY(0)',
+          opacity: isClosing ? 0.2 : 1,
+          transition: isDragging ? 'none' : 'transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease'
+        }"
+        @touchstart="onTouchStart"
+        @touchmove="onTouchMove"
+        @touchend="onTouchEnd"
+        @touchcancel="onTouchEnd"
+        @mousedown="onMouseDown">
+
+        <!-- Barra indicadora superior de agarre para deslizar hacia abajo -->
+        <div class="absolute top-2 left-0 right-0 z-40 flex justify-center py-1 cursor-grab active:cursor-grabbing pointer-events-auto">
+          <div class="w-12 h-1.5 rounded-full bg-white/40 hover:bg-white/70 active:bg-white/90 transition-all shadow-sm"></div>
+        </div>
 
         <!-- ═══════════════════════════════════════════════════════
              FONDO AMBIENTAL DE VIDEO DIFUMINADO (Elimina franjas vacías)
@@ -199,11 +306,14 @@ defineExpose({
         <!-- ═══════════════════════════════════════════════════════
              REELS VIEWER: VIDEO VERTICAL FULL-HEIGHT
              ═══════════════════════════════════════════════════════════ -->
-        <div ref="videoContainerRef" class="relative z-10 w-full h-full flex items-center justify-center overflow-hidden bg-black">
+        <div class="relative z-10 w-full h-full flex items-center justify-center overflow-hidden bg-black">
           
-          <!-- Video Vertical 9:16 Ocupando todo el alto disponible -->
+          <!-- Video Vertical 9:16 Ocupando todo el alto disponible (sin pantalla completa invasiva) -->
           <video ref="videoRef" src="/videos/bar-promo.mp4" poster="/videos/bar-poster.jpg"
-            loop playsinline preload="auto"
+            loop playsinline webkit-playsinline x5-playsinline preload="auto"
+            disablepictureinpicture controlslist="nodownload nofullscreen noremoteplayback"
+            @dblclick.prevent.stop
+            @contextmenu.prevent
             class="w-full h-full object-cover sm:object-contain">
             Tu navegador no soporta video.
           </video>
@@ -211,7 +321,7 @@ defineExpose({
           <!-- ═══════════════════════════════════════════════════════
                HEADER FLOTANTE SUPERIOR (Estilo Stories / TikTok)
                ═══════════════════════════════════════════════════════════ -->
-          <div class="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3.5 sm:p-4 bg-gradient-to-b from-black/85 via-black/40 to-transparent">
+          <div class="absolute top-0 left-0 right-0 z-30 flex items-center justify-between pt-5 pb-3 px-3.5 sm:px-4 bg-gradient-to-b from-black/85 via-black/40 to-transparent">
             <!-- Brand Badge -->
             <div class="flex items-center gap-2">
               <div class="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 p-0.5 flex items-center justify-center shadow-md">
@@ -241,16 +351,8 @@ defineExpose({
                 <span>{{ isVideoMuted ? 'Mudo' : 'Audio' }}</span>
               </button>
 
-              <!-- Fullscreen Button -->
-              <button type="button" @click.stop="toggleFullscreen"
-                class="w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white border border-white/20 flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-md"
-                :title="isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'" aria-label="Pantalla completa">
-                <ArrowsPointingInIcon v-if="isFullscreen" class="w-4 h-4" />
-                <ArrowsPointingOutIcon v-else class="w-4 h-4" />
-              </button>
-
-              <!-- Close Button (X) -->
-              <button type="button" @click.stop="closeModal"
+              <!-- Close Button (X) con suave descenso -->
+              <button type="button" @click.stop="closeModal(true)"
                 class="w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white border border-white/20 flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-md"
                 aria-label="Cerrar modal">
                 <XMarkIcon class="w-5 h-5" />
@@ -343,9 +445,9 @@ defineExpose({
         </div>
       </div>
 
-      <!-- Backdrop click to close -->
+      <!-- Backdrop click to close con transición suave -->
       <form method="dialog" class="modal-backdrop">
-        <button @click="closeModal">close</button>
+        <button @click.prevent="closeModal(true)">close</button>
       </form>
     </dialog>
   </div>
