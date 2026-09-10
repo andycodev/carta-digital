@@ -24,9 +24,46 @@ import {
 } from '@heroicons/vue/24/outline'
 
 type FlyerFormat = 'whatsapp' | 'social' | 'tv'
+type ImageFileFormat = 'png' | 'jpg' | 'jpeg'
 type LogoPosition = 'center' | 'left' | 'right' | 'badge'
 type FontTheme = 'serif' | 'sans' | 'condensed' | 'editorial'
 type FrameStyle = 'double' | 'modern_cards' | 'minimal_lines' | 'ornamental'
+
+interface ImageFormatOption {
+  id: ImageFileFormat
+  name: string
+  ext: string
+  mime: string
+  desc: string
+  badge: string
+}
+
+const imageFormatOptions: ImageFormatOption[] = [
+  {
+    id: 'png',
+    name: 'PNG',
+    ext: 'png',
+    mime: 'image/png',
+    desc: 'Sin compresión, máxima fidelidad y calidad de texto',
+    badge: 'Sin pérdida'
+  },
+  {
+    id: 'jpg',
+    name: 'JPG',
+    ext: 'jpg',
+    mime: 'image/jpeg',
+    desc: 'Comprimido y ligero, ideal para redes y chat',
+    badge: 'Ligero'
+  },
+  {
+    id: 'jpeg',
+    name: 'JPEG',
+    ext: 'jpeg',
+    mime: 'image/jpeg',
+    desc: 'Formato estándar universal para web y fotos',
+    badge: 'Estándar'
+  }
+]
 
 interface FormatOption {
   id: FlyerFormat
@@ -261,6 +298,22 @@ function adjustFontScale(delta: number) {
 watch(flyerFontScale, (val) => {
   try {
     localStorage.setItem('carta_flyer_font_scale', String(val))
+  } catch {
+    // ignore
+  }
+})
+
+// Image file format state (PNG, JPG, JPEG)
+const savedImageFormat = typeof localStorage !== 'undefined' ? (localStorage.getItem('carta_flyer_image_format') as ImageFileFormat | null) : null
+const selectedImageFormat = ref<ImageFileFormat>(
+  savedImageFormat === 'jpg' || savedImageFormat === 'jpeg' || savedImageFormat === 'png'
+    ? savedImageFormat
+    : 'png'
+)
+
+watch(selectedImageFormat, (val) => {
+  try {
+    localStorage.setItem('carta_flyer_image_format', val)
   } catch {
     // ignore
   }
@@ -1544,7 +1597,8 @@ async function generatePreview() {
   }
 }
 
-async function downloadFlyerForCategory(cat: Categoria) {
+async function downloadFlyerForCategory(cat: Categoria, formatChoice?: ImageFileFormat) {
+  const imgFormat = formatChoice || selectedImageFormat.value
   downloadingCatId.value = cat.id
   try {
     const canvas = await renderFlyerCanvas(cat, selectedFormat.value, currentStyle.value)
@@ -1556,9 +1610,13 @@ async function downloadFlyerForCategory(cat: Categoria) {
         : 'WhatsApp-9x16'
 
     const styleSuffix = sanitizeFilename(currentStyle.value.name)
-    const filename = `Flyer-Las-Delicias-${cleanCatName}-${formatSuffix}-${styleSuffix}.png`
+    const ext = imgFormat === 'jpg' ? 'jpg' : imgFormat === 'jpeg' ? 'jpeg' : 'png'
+    const filename = `Flyer-Las-Delicias-${cleanCatName}-${formatSuffix}-${styleSuffix}.${ext}`
 
-    const dataUrl = canvas.toDataURL('image/png')
+    const dataUrl = (imgFormat === 'jpg' || imgFormat === 'jpeg')
+      ? canvas.toDataURL('image/jpeg', 0.95)
+      : canvas.toDataURL('image/png')
+
     const link = document.createElement('a')
     link.setAttribute('download', filename)
     link.href = dataUrl
@@ -1833,6 +1891,33 @@ watch(categories, (cats) => {
               </div>
             </div>
 
+            <!-- Image File Format Selector (PNG, JPG, JPEG) -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Formato de Archivo:</label>
+                <span class="text-[10px] font-bold text-brand-primary bg-orange-50 px-2 py-0.5 rounded border border-orange-200 uppercase font-mono">
+                  .{{ selectedImageFormat }}
+                </span>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <button
+                  v-for="fmt in imageFormatOptions"
+                  :key="fmt.id"
+                  type="button"
+                  @click="selectedImageFormat = fmt.id"
+                  class="p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer min-h-[52px]"
+                  :class="selectedImageFormat === fmt.id ? 'bg-slate-900 text-white border-slate-900 shadow-2xs font-bold' : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100 text-slate-700'"
+                >
+                  <span class="text-xs font-bold leading-tight">{{ fmt.name }}</span>
+                  <span class="text-[9px] font-mono opacity-75">.{{ fmt.ext }}</span>
+                  <span class="text-[8px] px-1.5 py-0.2 rounded mt-0.5 font-sans"
+                    :class="selectedImageFormat === fmt.id ? 'bg-white/20 text-amber-300' : 'bg-slate-200/80 text-slate-600'">
+                    {{ fmt.badge }}
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <!-- Category selector pills -->
             <div>
               <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Carta para el flyer:</label>
@@ -2099,7 +2184,27 @@ watch(categories, (cats) => {
             </div>
           </button>
 
-          <div v-show="accordions.downloads" class="p-3 space-y-2">
+          <div v-show="accordions.downloads" class="p-3 space-y-2.5">
+            <!-- Selector rápido de formato para descargas -->
+            <div class="flex items-center justify-between p-2 rounded-xl bg-slate-100/90 border border-slate-200">
+              <span class="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1.5">
+                <PhotoIcon class="w-3.5 h-3.5 text-slate-500" />
+                <span>Formato de descarga:</span>
+              </span>
+              <div class="inline-flex p-0.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                <button
+                  v-for="fmt in imageFormatOptions"
+                  :key="fmt.id"
+                  type="button"
+                  @click="selectedImageFormat = fmt.id"
+                  class="px-2.5 py-0.5 text-[11px] font-bold uppercase rounded transition-all cursor-pointer"
+                  :class="selectedImageFormat === fmt.id ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
+                >
+                  {{ fmt.name }}
+                </button>
+              </div>
+            </div>
+
             <div v-for="cat in mainCartas" :key="cat.id"
               class="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/70 transition-colors">
               <div class="flex items-center gap-2 min-w-0 mr-2">
@@ -2124,12 +2229,31 @@ watch(categories, (cats) => {
                   <span class="hidden sm:inline">WhatsApp</span>
                 </button>
 
-                <button type="button" @click="downloadFlyerForCategory(cat)" :disabled="downloadingCatId === cat.id"
-                  class="btn btn-xs bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center gap-1 shrink-0 cursor-pointer min-h-[36px]"
-                  title="Descargar imagen PNG">
-                  <ArrowDownTrayIcon class="w-3.5 h-3.5" />
-                  <span>{{ downloadingCatId === cat.id ? '...' : 'Descargar' }}</span>
-                </button>
+                <div class="inline-flex rounded-lg shadow-2xs overflow-hidden">
+                  <button type="button" @click="downloadFlyerForCategory(cat)" :disabled="downloadingCatId === cat.id"
+                    class="btn btn-xs bg-slate-900 hover:bg-slate-800 text-white rounded-r-none flex items-center gap-1 shrink-0 cursor-pointer min-h-[36px]"
+                    :title="`Descargar flyer en formato ${selectedImageFormat.toUpperCase()} (.${selectedImageFormat})`">
+                    <ArrowDownTrayIcon class="w-3.5 h-3.5 text-amber-300" />
+                    <span>{{ downloadingCatId === cat.id ? '...' : selectedImageFormat.toUpperCase() }}</span>
+                  </button>
+                  <div class="dropdown dropdown-left dropdown-bottom">
+                    <button tabindex="0" type="button"
+                      class="btn btn-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-l-none border-l border-slate-700 px-1 min-h-[36px] cursor-pointer"
+                      title="Elegir formato para este flyer">
+                      <ChevronDownIcon class="w-3 h-3" />
+                    </button>
+                    <ul tabindex="0" class="dropdown-content z-20 menu p-1.5 shadow-xl bg-slate-900 text-white border border-slate-700 rounded-xl w-36 space-y-0.5">
+                      <li v-for="fmt in imageFormatOptions" :key="fmt.id">
+                        <button type="button" @click="downloadFlyerForCategory(cat, fmt.id)"
+                          class="text-xs py-1.5 px-2 rounded-lg hover:bg-slate-800 flex items-center justify-between cursor-pointer"
+                          :class="selectedImageFormat === fmt.id ? 'text-amber-300 font-bold' : 'text-slate-200'">
+                          <span>.{{ fmt.ext }}</span>
+                          <span class="text-[9px] opacity-60">{{ fmt.name }}</span>
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -2217,6 +2341,10 @@ watch(categories, (cats) => {
                 class="text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-mono font-bold">
                 Letra: {{ Math.round(flyerFontScale * 100) }}%
               </span>
+              <span
+                class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono font-bold uppercase">
+                .{{ selectedImageFormat }}
+              </span>
             </div>
 
             <!-- Format quick chips -->
@@ -2231,6 +2359,28 @@ watch(categories, (cats) => {
 
           <!-- Direct Prominent Actions: WhatsApp Sharing & Direct Download -->
           <div class="space-y-2.5" v-if="currentCategory">
+            <!-- Selector de formato de archivo de descarga -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div class="flex items-center gap-1.5 text-xs text-slate-700 font-semibold pl-1">
+                <PhotoIcon class="w-4 h-4 text-brand-primary shrink-0" />
+                <span class="text-[11px] font-bold uppercase tracking-wider">Formato de descarga:</span>
+              </div>
+              <div class="inline-flex p-0.5 bg-slate-200/80 rounded-xl border border-slate-300/60 self-start sm:self-auto">
+                <button
+                  v-for="fmt in imageFormatOptions"
+                  :key="fmt.id"
+                  type="button"
+                  @click="selectedImageFormat = fmt.id"
+                  class="px-3 py-1 text-xs font-bold uppercase rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                  :class="selectedImageFormat === fmt.id ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
+                  :title="fmt.desc"
+                >
+                  <span>{{ fmt.name }}</span>
+                  <span class="text-[9px] font-mono opacity-60">.{{ fmt.ext }}</span>
+                </button>
+              </div>
+            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <!-- Botón Compartir por WhatsApp -->
               <button
@@ -2246,16 +2396,52 @@ watch(categories, (cats) => {
                 <span>{{ isSharingWhatsApp ? 'Preparando...' : 'Compartir por WhatsApp' }}</span>
               </button>
 
-              <!-- Botón Descargar Imagen -->
-              <button
-                type="button"
-                @click="downloadFlyerForCategory(currentCategory)"
-                :disabled="isSharingWhatsApp || downloadingCatId === currentCategory?.id"
-                class="btn bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center gap-2 shadow-md cursor-pointer min-h-[48px] text-xs sm:text-sm font-bold active:scale-[0.98] transition-all"
-              >
-                <ArrowDownTrayIcon class="w-4 h-4 text-amber-300" />
-                <span>{{ downloadingCatId === currentCategory?.id ? 'Generando...' : 'Descargar Flyer (PNG)' }}</span>
-              </button>
+              <!-- Botón Descargar Imagen con menú desplegable -->
+              <div class="flex items-stretch rounded-2xl shadow-md overflow-hidden bg-slate-900">
+                <button
+                  type="button"
+                  @click="downloadFlyerForCategory(currentCategory)"
+                  :disabled="isSharingWhatsApp || downloadingCatId === currentCategory?.id"
+                  class="flex-1 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center gap-2 cursor-pointer min-h-[48px] text-xs sm:text-sm font-bold active:scale-[0.98] transition-all"
+                  :title="`Descargar flyer en formato ${selectedImageFormat.toUpperCase()} (.${selectedImageFormat})`"
+                >
+                  <ArrowDownTrayIcon class="w-4 h-4 text-amber-300" />
+                  <span>
+                    {{ downloadingCatId === currentCategory?.id ? 'Generando...' : `Descargar Flyer (${selectedImageFormat.toUpperCase()})` }}
+                  </span>
+                </button>
+
+                <!-- Menú desplegable para descargar directamente en otro formato -->
+                <div class="dropdown dropdown-top dropdown-end flex items-stretch">
+                  <button
+                    tabindex="0"
+                    type="button"
+                    class="px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-l border-slate-700/80 flex items-center justify-center cursor-pointer transition-colors"
+                    title="Elegir formato de descarga (PNG, JPG, JPEG)"
+                  >
+                    <ChevronDownIcon class="w-4 h-4" />
+                  </button>
+                  <ul tabindex="0" class="dropdown-content z-30 menu p-2 shadow-2xl bg-slate-900 text-white border border-slate-700 rounded-2xl w-60 mb-2 space-y-1">
+                    <li class="menu-title text-[10px] text-slate-400 font-bold uppercase tracking-wider px-2 py-1">
+                      Descargar directamente en:
+                    </li>
+                    <li v-for="fmt in imageFormatOptions" :key="fmt.id">
+                      <button
+                        type="button"
+                        @click="downloadFlyerForCategory(currentCategory, fmt.id)"
+                        class="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-800 cursor-pointer"
+                        :class="selectedImageFormat === fmt.id ? 'bg-slate-800/90 text-amber-300 font-bold' : 'text-slate-200'"
+                      >
+                        <div class="flex items-center gap-2">
+                          <span class="w-2 h-2 rounded-full" :class="selectedImageFormat === fmt.id ? 'bg-amber-400' : 'bg-slate-600'"></span>
+                          <span>Descargar en <strong>{{ fmt.name }}</strong></span>
+                        </div>
+                        <span class="text-[10px] font-mono opacity-60">.{{ fmt.ext }}</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
             <!-- Previsualización del mensaje generado automáticamente para WhatsApp -->
